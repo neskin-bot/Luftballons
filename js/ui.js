@@ -518,6 +518,9 @@ HOOK.wait = (s) => sleep(fast ? 0 : s * 650);
 HOOK.limparTela = () => { logEl.innerHTML = ''; };
 HOOK.resumo = (n, ls) => { addLog(`--- O que aconteceu na rodada ${n} ---`, 'h'); ls.forEach(l => addLog(l)); addLog('-'.repeat(30), 'h'); };
 HOOK.status = (j, i, t) => { $('#turno').textContent = 'Turno ' + t; };
+HOOK.turnoFim = (j, i, t) => Luft.api.status(t, j, i);
+HOOK.danoPersistente = (u, rounds, tipo) => Luft.api.danoPersistente(u.lado_id, rounds, tipo);
+HOOK.itemUsado = (u, chave) => Luft.api.itemUsado(u.lado_id, chave);
 const pop = (u, t, c) => { const p = pos(u); floats.push({ x: p.x, y: p.y - (u.tanque_ativo ? 230 : SOL_H + 45), t, c, life: 60 }); };
 const setPose = (u, k, ms = 700) => { u._pose = k; setTimeout(() => { if (u._pose === k) u._pose = null; }, ms); };
 const flashes = [];
@@ -855,6 +858,7 @@ async function menuFlow(ladoPre) {
     player = U.criar_unidade(ladoPre); enemy = U.criar_unidade(ladoPre === 1 ? 2 : 1);
     addLog(`Você escolheu: ${D[ladoPre].nome} (${D[ladoPre].nome_completo}).`); addLog('A batalha vai começar!'); somAmbiente();
     await sleep(800);
+    await Luft.api.iniciar(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
     box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
     addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h');
@@ -879,7 +883,8 @@ async function menuFlow(ladoPre) {
   player = U.criar_unidade(l); enemy = U.criar_unidade(l === 1 ? 2 : 1);
   addLog(`Você escolheu: ${D[l].nome} (${D[l].nome_completo}).`); addLog('A batalha vai começar!'); somAmbiente();
   await sleep(fast ? 0 : 800);
-  const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
+  await Luft.api.iniciar(player, enemy);
+    const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
   box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
   addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h');
 }

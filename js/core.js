@@ -6,6 +6,7 @@ const L = {};
 const HOOK = L.HOOK = {
   say() {}, wait: async () => {}, fx: async () => {}, qte: async () => false,
   escolherAcao: async () => 'pular_vez', resumo() {}, status() {}, limparTela() {},
+  turnoFim() {}, danoPersistente() {}, itemUsado() {}, // ganchos do back-end
 };
 
 // ---------- utils ----------
@@ -171,7 +172,7 @@ A.ataque_anti_tank = async (at, def) => {
   let dano, desc;
   if (def.tanque_ativo) {
     dano = ri(13, 23);
-    if (Math.random() < 0.1) { dano = 30; def.efeito_incendiario_restante = C.DURACAO_INCENDIARIO_ANTITANQUE; desc = 'CRÍTICO no blindado, incendiando-o'; }
+    if (Math.random() < 0.1) { dano = 30; def.efeito_incendiario_restante = C.DURACAO_INCENDIARIO_ANTITANQUE; desc = 'CRÍTICO no blindado, incendiando-o'; HOOK.danoPersistente(def, C.DURACAO_INCENDIARIO_ANTITANQUE, 'incendio_antitanque'); }
     else desc = 'acerta o blindado';
   } else { dano = ri(5, 10); desc = 'pouco eficaz contra infantaria'; }
   dano = U.dano_com_buff(def, dano);
@@ -182,7 +183,7 @@ A.ataque_anti_tank = async (at, def) => {
 };
 A.ataque_molotov = async (at, def) => {
   const d = C.DADOS_LADOS[at.lado_id];
-  at.arma_no_chao = true; def.molotov_restante = C.MOLOTOV.rodadas;
+  at.arma_no_chao = true; def.molotov_restante = C.MOLOTOV.rodadas; HOOK.danoPersistente(def, C.MOLOTOV.rodadas, 'molotov');
   say(`${at.nome} larga o ${d.arma_anti_tank_nome} no chão, acende uma molotov e a arremessa!`);
   say(`${U.nome_alvo_principal(def)} pega fogo!`);
   await fx('molotov', { at, def }); await espera(1.5);
@@ -495,7 +496,7 @@ Tn.executar_acao = async (chave, u, op) => {
     U.pagar(u, chave);
     if (chave in ACOES_ATAQUE) await ACOES_ATAQUE[chave](u, op);
     else if (chave.startsWith('carregar_')) await T.carregar(u, chave.slice(9));
-    else if (chave in ACOES_SUPRIMENTO) await ACOES_SUPRIMENTO[chave](u);
+    else if (chave in ACOES_SUPRIMENTO) { await ACOES_SUPRIMENTO[chave](u); if (SUPR_CAMINHAO.has(chave)) HOOK.itemUsado(u, chave); }
     else if (chave.startsWith('ataque_aereo_')) await LS.solicitar_ataque_aereo(u, chave.slice(13));
     else if (chave.startsWith('comprar_')) await LS.comprar(u, chave.slice(8));
     else if (chave === 'chamar_caminhao') await CM.chamar(u);
@@ -652,6 +653,7 @@ L.rodar_batalha = async (jogador, inimigo) => {
       if (U.unidade_derrotada(op)) break;
     }
     for (const u of [alemao, sovietico]) { await L.aplica_efeito_incendiario(u); await L.aplica_molotov(u); }
+    HOOK.turnoFim(jogador, inimigo, turno);
     const fuga = jogador.fugiu || inimigo.fugiu;
     if (fuga || U.unidade_derrotada(jogador) || U.unidade_derrotada(inimigo)) { HOOK.status(jogador, inimigo, turno); return fuga ? 'fuga' : 'combate'; }
     turno += 1;
