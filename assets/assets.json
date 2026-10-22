@@ -1,0 +1,329 @@
+{
+ "ovd_at": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_at_0.png",
+    "w": 439,
+    "h": 702
+   },
+   {
+    "file": "infantaria/ovd_at_1.png",
+    "w": 597,
+    "h": 579
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_molotov": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_molotov_0.png",
+    "w": 481,
+    "h": 686
+   },
+   {
+    "file": "infantaria/ovd_molotov_1.png",
+    "w": 515,
+    "h": 669
+   },
+   {
+    "file": "infantaria/ovd_molotov_2.png",
+    "w": 421,
+    "h": 574
+   }
+  ],
+  "esperado": 3
+ },
+ "ovd_fuz_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_fuz_a_0.png",
+    "w": 638,
+    "h": 762
+   },
+   {
+    "file": "infantaria/ovd_fuz_a_1.png",
+    "w": 638,
+    "h": 732
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_fuz_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_fuz_b_0.png",
+    "w": 480,
+    "h": 708
+   },
+   {
+    "file": "infantaria/ovd_fuz_b_1.png",
+    "w": 582,
+    "h": 686
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_smg_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_smg_a_0.png",
+    "w": 463,
+    "h": 697
+   },
+   {
+    "file": "infantaria/ovd_smg_a_1.png",
+    "w": 574,
+    "h": 673
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_smg_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_smg_b_0.png",
+    "w": 327,
+    "h": 720
+   },
+   {
+    "file": "infantaria/ovd_smg_b_1.png",
+    "w": 345,
+    "h": 720
+   },
+   {
+    "file": "infantaria/ovd_smg_b_2.png",
+    "w": 538,
+    "h": 685
+   }
+  ],
+  "esperado": null
+ },
+ "otan_at": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_at_0.png",
+    "w": 592,
+    "h": 720
+   },
+   {
+    "file": "infantaria/otan_at_1.png",
+    "w": 615,
+    "h": 633
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_molotov": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_molotov_0.png",
+    "w": 468,
+    "h": 720
+   },
+   {
+    "file": "infantaria/otan_molotov_1.png",
+    "w": 521,
+    "h": 675
+   },
+   {
+    "file": "infantaria/otan_molotov_2.png",
+    "w": 498,
+    "h": 604
+   }
+  ],
+  "esperado": 3
+ },
+ "otan_fuz_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_fuz_a_0.png",
+    "w": 568,
+    "h": 715
+   },
+   {
+    "file": "infantaria/otan_fuz_a_1.png",
+    "w": 621,
+    "h": 691
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_fuz_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_fuz_b_0.png",
+    "w": 580,
+    "h": 750
+   },
+   {
+    "file": "infantaria/otan_fuz_b_1.png",
+    "w": 662,
+    "h": 744
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_smg_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_smg_a_0.png",
+    "w": 438,
+    "h": 744
+   },
+   {
+    "file": "infantaria/otan_smg_a_1.png",
+    "w": 556,
+    "h": 726
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_smg_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_smg_b_0.png",
+    "w": 432,
+    "h": 727
+   },
+   {
+    "file": "infantaria/otan_smg_b_1.png",
+    "w": 579,
+    "h": 715
+   }
+  ],
+  "esperado": null
+ },
+ "ovd_leve": {
+  "facing": "L",
+  "file": "veiculos/ovd_leve.png",
+  "w": 1666,
+  "h": 601
+ },
+ "ovd_medio": {
+  "facing": "L",
+  "file": "veiculos/ovd_medio.png",
+  "w": 1785,
+  "h": 592
+ },
+ "ovd_pesado": {
+  "facing": "L",
+  "file": "veiculos/ovd_pesado.png",
+  "w": 1865,
+  "h": 560
+ },
+ "ovd_art_body": {
+  "facing": "L",
+  "file": "veiculos/ovd_art_body.png",
+  "w": 1242,
+  "h": 623
+ },
+ "ovd_art_gun": {
+  "facing": "R",
+  "file": "veiculos/ovd_art_gun.png",
+  "w": 1236,
+  "h": 155
+ },
+ "ovd_aa_body": {
+  "facing": "L",
+  "file": "veiculos/ovd_aa_body.png",
+  "w": 1307,
+  "h": 545
+ },
+ "ovd_aa_gun": {
+  "facing": "L",
+  "file": "veiculos/ovd_aa_gun.png",
+  "w": 608,
+  "h": 51
+ },
+ "ovd_caminhao": {
+  "facing": "L",
+  "file": "veiculos/ovd_caminhao.png",
+  "w": 1556,
+  "h": 688
+ },
+ "ovd_aviao": {
+  "facing": "L",
+  "file": "veiculos/ovd_aviao.png",
+  "w": 1930,
+  "h": 458
+ },
+ "ovd_bomba": {
+  "facing": "R",
+  "file": "veiculos/ovd_bomba.png",
+  "w": 1077,
+  "h": 280
+ },
+ "otan_leve": {
+  "facing": "L",
+  "file": "veiculos/otan_leve.png",
+  "w": 1677,
+  "h": 620
+ },
+ "otan_medio": {
+  "facing": "L",
+  "file": "veiculos/otan_medio.png",
+  "w": 1691,
+  "h": 624
+ },
+ "otan_pesado": {
+  "facing": "R",
+  "file": "veiculos/otan_pesado.png",
+  "w": 1803,
+  "h": 576
+ },
+ "otan_art_body": {
+  "facing": "L",
+  "file": "veiculos/otan_art_body.png",
+  "w": 1533,
+  "h": 630
+ },
+ "otan_art_gun": {
+  "facing": "R",
+  "file": "veiculos/otan_art_gun.png",
+  "w": 1512,
+  "h": 265
+ },
+ "otan_aa_body": {
+  "facing": "R",
+  "file": "veiculos/otan_aa_body.png",
+  "w": 1413,
+  "h": 688
+ },
+ "otan_aa_gun": {
+  "facing": "R",
+  "file": "veiculos/otan_aa_gun.png",
+  "w": 1228,
+  "h": 296
+ },
+ "otan_caminhao": {
+  "facing": "R",
+  "file": "veiculos/otan_caminhao.png",
+  "w": 1571,
+  "h": 593
+ },
+ "otan_aviao": {
+  "facing": "R",
+  "file": "veiculos/otan_aviao.png",
+  "w": 1260,
+  "h": 432
+ },
+ "otan_bomba": {
+  "facing": "R",
+  "file": "veiculos/otan_bomba.png",
+  "w": 1875,
+  "h": 403
+ }
+}

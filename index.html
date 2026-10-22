@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Luftballons</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0d1114;color:#d7dde0;font-family:system-ui,sans-serif}
+#app{max-width:1680px;margin:auto;padding:6px}
+#stage{position:relative;width:100%;aspect-ratio:1376/768;background:#000}
+canvas{width:100%;height:100%;display:block;image-rendering:pixelated}
+.hud{position:absolute;top:8px;width:34%;background:#0b1013cc;border:1px solid #3a4850;padding:6px 8px;font-size:clamp(9px,1.1vw,14px);line-height:1.35}
+.bar{height:9px;background:#2a1a1a;margin:2px 0}.bar i{display:block;height:100%;background:#4caf50}.bar.t i{background:#c9a227}
+.tag{color:#ff9d4d}.dim{color:#8a979d}
+#turno{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#0b1013cc;padding:4px 12px;border:1px solid #3a4850}
+#bottom{display:grid;grid-template-columns:2.6fr 1fr;gap:6px;margin-top:6px;height:250px}
+#acoes,#log{background:#11181c;border:1px solid #2c3a41;padding:8px;overflow:auto}
+#acoes{display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+button{background:#22313a;color:#e6ecef;border:1px solid #4a5d68;padding:7px 10px;cursor:pointer;font-size:13px;border-radius:3px}
+button:hover{background:#2f4551}button.x{background:#3a2222}
+.off{padding:7px 10px;color:#6b787e;font-size:13px;border:1px dashed #2f3c43;border-radius:3px}
+#log p{margin:2px 0;font-size:11px;opacity:.8}#log .h{color:#c9a227;font-weight:bold}
+#qte{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#0008}
+#qte button{font-size:34px;padding:22px 46px;background:#a32;animation:p .3s infinite alternate}
+@keyframes p{to{transform:scale(1.08)}}
+#menu{position:fixed;inset:0;background:#0d1114f7;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;z-index:9;text-align:center;overflow:auto;padding:20px}table{border-collapse:collapse;font-size:14px}td,th{border:1px solid #33444d;padding:5px 12px;text-align:left}th{background:#18232a}#menu .row{display:flex;gap:16px}
+#menu h1{letter-spacing:.4em;margin:0;font-size:40px}#menu button{font-size:20px;padding:14px 36px;min-width:260px}
+.hn{display:flex;justify-content:space-between;align-items:baseline;gap:6px}.pt{color:#ffd23f;font-weight:bold;font-size:1.15em}
+.hp{position:relative;height:18px;background:#2a1a1a;border:1px solid #000;margin:3px 0}.hp i{position:absolute;inset:0 auto 0 0;transition:width .4s}.hp span{position:relative;display:block;text-align:center;font-weight:bold;line-height:16px;text-shadow:0 0 3px #000,0 0 3px #000}
+.chips{display:flex;flex-wrap:wrap;gap:3px}.chip{background:#1b262c;border:1px solid #33444d;border-radius:3px;padding:1px 5px;white-space:nowrap}.chip.off{opacity:.4}.chip.hot{border-color:#ff8a1f;color:#ffb36b}
+.pp{letter-spacing:-1px;margin-left:3px;font-size:.8em;color:#cfe}.mini{display:inline-block;width:34px;height:7px;background:#2a1a1a;margin-left:4px;vertical-align:middle}.mini i{display:block;height:100%;background:#c9a227}
+.card{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;width:120px;min-height:104px;padding:8px 6px;text-align:center}.card.atk{width:176px}.card.atk .ci{font-size:38px}.card.atk .cl{font-size:15px}
+.card .ci{font-size:32px;line-height:1}.card .cl{font-size:13px;font-weight:bold}.card .cb{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;font-size:11px;min-height:14px}
+.bd{background:#0b1013;border:1px solid #3a4850;border-radius:8px;padding:0 5px}.bd.gain{color:#8fd;border-color:#2f6}.ck{position:absolute;top:2px;left:5px;font-size:10px;color:#8a979d}
+.card.off{border:1px dashed #2f3c43;background:transparent;opacity:.55;color:#8a979d}.card.off .ci{font-size:22px}.card.x{background:#3a2222;min-height:104px}
+#main{display:flex;gap:6px;align-items:stretch}#stage{flex:1;min-width:0;align-self:flex-start}
+.side{width:136px;flex:none;background:#0b1013;border:1px solid #3a4850;padding:6px;display:flex;flex-direction:column;gap:6px;align-items:center;font-size:12px;overflow:hidden}
+.flag{width:100%;max-height:70px;object-fit:contain;image-rendering:pixelated}
+.bars{display:flex;gap:10px;justify-content:center;flex:1;min-height:90px;width:100%}.bcol{display:flex;flex-direction:column;align-items:center;gap:3px;width:48%}
+.bico{height:28px;display:flex;align-items:center;justify-content:center}.bico img{width:100%;max-height:28px;object-fit:contain;image-rendering:pixelated}
+.vbar{position:relative;flex:1;width:22px;background:#2a1a1a;border:2px solid #000;display:flex;align-items:flex-end}.vbar i{display:block;width:100%;transition:height .4s}.vbar.none{visibility:hidden}
+.bcol small{font-size:11px;color:#cfd8dc}.pts{font-size:17px;font-weight:bold;color:#ffd23f}
+.sup{display:flex;gap:4px}.sl{display:flex;flex-direction:column;align-items:center;gap:2px;width:58px}.sn{font-size:10px;color:#6b787e}.sn.on{color:#cfd8dc}.slot{position:relative;width:52px;height:52px;background:#1a2429;border:2px solid #33444d;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.slot img{width:36px;image-rendering:pixelated;opacity:.22;filter:grayscale(1)}.slot.on{border-color:#6a8590}.slot.on img{opacity:1;filter:none}
+.slot small{position:absolute;bottom:0;font-size:10px;color:#9aa8ae}.slot.buy,.cam.buy{cursor:pointer;border-color:#ffd23f;box-shadow:0 0 6px #ffd23f88}.slot.buy img{opacity:.55}
+.cam{text-align:center;line-height:1.3;font-size:12px;min-height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;padding:2px 4px;width:100%}
+.cam:not(.on){font-size:24px;opacity:.35;filter:grayscale(1)}.cam.buy{opacity:1;filter:none}.cam small{font-size:10px;color:#ffd23f}.mini.w{display:block;width:70%;margin:3px auto 0}
+#comb{position:absolute;left:10px;bottom:10px;display:none;align-items:center;gap:8px;background:#0b1013cc;border:1px solid #3a4850;padding:6px 10px;font-size:22px}
+.cbar{position:relative;width:min(26vw,300px);height:24px;background:#2a1a1a;border:2px solid #000}.cbar i{position:absolute;inset:0 auto 0 0;background:#c9a227;transition:width .4s}.cbar span{position:relative;display:block;text-align:center;font-size:14px;font-weight:bold;line-height:20px;text-shadow:0 0 3px #000,0 0 3px #000}
+</style></head><body>
+<div id="app"><div id="main"><div class="side" id="h0"></div><div id="stage"><canvas id="c" width="1376" height="768"></canvas>
+<div id="turno"></div><div id="comb" title="Combustível">⛽<div class="cbar"><i></i><span></span></div></div>
+<div id="qte"><button id="qb">REAGIR! (ENTER)</button></div></div><div class="side" id="h1"></div></div>
+<div id="bottom"><div id="acoes"></div><div id="log"></div></div></div>
+<div id="menu"></div>
+<script src="assets/assets.js"></script><script src="js/core.js"></script><script src="js/ui.js"></script><script src="js/intro.js"></script>
+</body></html>

@@ -1,0 +1,122 @@
+{
+ "ovd_leve": {
+  "facing": "L",
+  "file": "veiculos/ovd_leve.png",
+  "w": 1666,
+  "h": 601
+ },
+ "ovd_medio": {
+  "facing": "L",
+  "file": "veiculos/ovd_medio.png",
+  "w": 1785,
+  "h": 592
+ },
+ "ovd_pesado": {
+  "facing": "L",
+  "file": "veiculos/ovd_pesado.png",
+  "w": 1865,
+  "h": 560
+ },
+ "ovd_art_body": {
+  "facing": "L",
+  "file": "veiculos/ovd_art_body.png",
+  "w": 1242,
+  "h": 623
+ },
+ "ovd_art_gun": {
+  "facing": "R",
+  "file": "veiculos/ovd_art_gun.png",
+  "w": 1236,
+  "h": 155
+ },
+ "ovd_aa_body": {
+  "facing": "L",
+  "file": "veiculos/ovd_aa_body.png",
+  "w": 1307,
+  "h": 545
+ },
+ "ovd_aa_gun": {
+  "facing": "L",
+  "file": "veiculos/ovd_aa_gun.png",
+  "w": 608,
+  "h": 51
+ },
+ "ovd_caminhao": {
+  "facing": "L",
+  "file": "veiculos/ovd_caminhao.png",
+  "w": 1556,
+  "h": 688
+ },
+ "ovd_aviao": {
+  "facing": "L",
+  "file": "veiculos/ovd_aviao.png",
+  "w": 1930,
+  "h": 458
+ },
+ "ovd_bomba": {
+  "facing": "R",
+  "file": "veiculos/ovd_bomba.png",
+  "w": 1077,
+  "h": 280
+ },
+ "otan_leve": {
+  "facing": "L",
+  "file": "veiculos/otan_leve.png",
+  "w": 1677,
+  "h": 620
+ },
+ "otan_medio": {
+  "facing": "L",
+  "file": "veiculos/otan_medio.png",
+  "w": 1691,
+  "h": 624
+ },
+ "otan_pesado": {
+  "facing": "R",
+  "file": "veiculos/otan_pesado.png",
+  "w": 1803,
+  "h": 576
+ },
+ "otan_art_body": {
+  "facing": "L",
+  "file": "veiculos/otan_art_body.png",
+  "w": 1533,
+  "h": 630
+ },
+ "otan_art_gun": {
+  "facing": "R",
+  "file": "veiculos/otan_art_gun.png",
+  "w": 1512,
+  "h": 265
+ },
+ "otan_aa_body": {
+  "facing": "R",
+  "file": "veiculos/otan_aa_body.png",
+  "w": 1413,
+  "h": 688
+ },
+ "otan_aa_gun": {
+  "facing": "R",
+  "file": "veiculos/otan_aa_gun.png",
+  "w": 1228,
+  "h": 296
+ },
+ "otan_caminhao": {
+  "facing": "R",
+  "file": "veiculos/otan_caminhao.png",
+  "w": 1571,
+  "h": 593
+ },
+ "otan_aviao": {
+  "facing": "R",
+  "file": "veiculos/otan_aviao.png",
+  "w": 1260,
+  "h": 432
+ },
+ "otan_bomba": {
+  "facing": "R",
+  "file": "veiculos/otan_bomba.png",
+  "w": 1875,
+  "h": 403
+ }
+}

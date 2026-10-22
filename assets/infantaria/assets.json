@@ -1,0 +1,209 @@
+{
+ "ovd_at": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_at_0.png",
+    "w": 439,
+    "h": 702
+   },
+   {
+    "file": "infantaria/ovd_at_1.png",
+    "w": 597,
+    "h": 579
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_molotov": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_molotov_0.png",
+    "w": 481,
+    "h": 686
+   },
+   {
+    "file": "infantaria/ovd_molotov_1.png",
+    "w": 515,
+    "h": 669
+   },
+   {
+    "file": "infantaria/ovd_molotov_2.png",
+    "w": 421,
+    "h": 574
+   }
+  ],
+  "esperado": 3
+ },
+ "ovd_fuz_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_fuz_a_0.png",
+    "w": 638,
+    "h": 762
+   },
+   {
+    "file": "infantaria/ovd_fuz_a_1.png",
+    "w": 638,
+    "h": 732
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_fuz_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_fuz_b_0.png",
+    "w": 480,
+    "h": 708
+   },
+   {
+    "file": "infantaria/ovd_fuz_b_1.png",
+    "w": 582,
+    "h": 686
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_smg_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_smg_a_0.png",
+    "w": 463,
+    "h": 697
+   },
+   {
+    "file": "infantaria/ovd_smg_a_1.png",
+    "w": 574,
+    "h": 673
+   }
+  ],
+  "esperado": 2
+ },
+ "ovd_smg_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/ovd_smg_b_0.png",
+    "w": 327,
+    "h": 720
+   },
+   {
+    "file": "infantaria/ovd_smg_b_1.png",
+    "w": 345,
+    "h": 720
+   },
+   {
+    "file": "infantaria/ovd_smg_b_2.png",
+    "w": 538,
+    "h": 685
+   }
+  ],
+  "esperado": null
+ },
+ "otan_at": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_at_0.png",
+    "w": 592,
+    "h": 720
+   },
+   {
+    "file": "infantaria/otan_at_1.png",
+    "w": 615,
+    "h": 633
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_molotov": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_molotov_0.png",
+    "w": 468,
+    "h": 720
+   },
+   {
+    "file": "infantaria/otan_molotov_1.png",
+    "w": 521,
+    "h": 675
+   },
+   {
+    "file": "infantaria/otan_molotov_2.png",
+    "w": 498,
+    "h": 604
+   }
+  ],
+  "esperado": 3
+ },
+ "otan_fuz_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_fuz_a_0.png",
+    "w": 568,
+    "h": 715
+   },
+   {
+    "file": "infantaria/otan_fuz_a_1.png",
+    "w": 621,
+    "h": 691
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_fuz_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_fuz_b_0.png",
+    "w": 580,
+    "h": 750
+   },
+   {
+    "file": "infantaria/otan_fuz_b_1.png",
+    "w": 662,
+    "h": 744
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_smg_a": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_smg_a_0.png",
+    "w": 438,
+    "h": 744
+   },
+   {
+    "file": "infantaria/otan_smg_a_1.png",
+    "w": 556,
+    "h": 726
+   }
+  ],
+  "esperado": 2
+ },
+ "otan_smg_b": {
+  "facing": "R",
+  "poses": [
+   {
+    "file": "infantaria/otan_smg_b_0.png",
+    "w": 432,
+    "h": 727
+   },
+   {
+    "file": "infantaria/otan_smg_b_1.png",
+    "w": 579,
+    "h": 715
+   }
+  ],
+  "esperado": null
+ }
+}
