@@ -850,6 +850,74 @@ function custos() {
 
 let _amb = null;
 function somAmbiente() { if (_amb) return; _amb = new Audio('assets/sons/ambiente.mp3'); _amb.loop = true; _amb.volume = 0.5; _amb.play().catch(() => {}); }
+
+// ================= CENA FINAL (somente visual; não mexe no backend) =================
+const SOM_FIM = { 1: 'assets/audio/vitoria_otan.mp3', 2: 'assets/audio/vitoria_ovd.mp3' };
+const VOL_FIM = { 1: 5, 2: 5 }; // volume 0 a 10 (normal = 5)
+const BANDEIRA_FIM = { 1: 'assets/cenas/flag_otan.jpg', 2: 'assets/cenas/flag_ovd.jpg' };
+let dbgKill = false;
+const ESTAT = { 1: { causado: 0, recebido: 0 }, 2: { causado: 0, recebido: 0 } };
+const fxEstat = HOOK.fx; // só observa o evento 'dano' e repassa a chamada intacta
+HOOK.fx = (n, d) => {
+  try { if (!dbgKill && n === 'dano' && d && d.u && d.dano > 0) { const l = d.u.lado_id, o = l === 1 ? 2 : 1; ESTAT[l].recebido += d.dano; ESTAT[o].causado += d.dano; } } catch (e) { }
+  return fxEstat(n, d);
+};
+const CSS_FIM = `
+#fim{position:fixed;inset:0;z-index:9998;opacity:0;color:#33ff66;font-family:ui-monospace,"Courier New",monospace;background:radial-gradient(ellipse at center,#06180a 0%,#020a02 70%);overflow:auto}
+#fim .cont{position:relative;z-index:2;padding:clamp(16px,3vw,40px);text-shadow:0 0 6px #33ff66,0 0 14px rgba(51,255,102,.6)}
+#fim .topo{display:flex;align-items:center;gap:clamp(12px,2vw,28px)}
+#fim .topo img{width:clamp(110px,16vw,240px);aspect-ratio:4/3;object-fit:cover;border:2px solid #33ff66;box-shadow:0 0 10px rgba(51,255,102,.45)}
+#fim h1{margin:0;font-size:clamp(1.4rem,3.4vw,3rem);letter-spacing:.12em}
+#fim .sub{margin-top:6px;opacity:.75;font-size:clamp(.8rem,1.3vw,1.1rem)}
+#fim table{margin-top:clamp(18px,3vw,36px);border-collapse:collapse;font-size:clamp(.9rem,1.6vw,1.35rem)}
+#fim th,#fim td{border:1px solid #1f9940;padding:8px 22px;text-align:left}
+#fim th{background:rgba(51,255,102,.08);letter-spacing:.1em}
+#fim td.n{text-align:right}
+#fim .win{background:rgba(51,255,102,.14)}
+#fim button{margin-top:clamp(18px,3vw,36px);font:inherit;font-size:1.05rem;letter-spacing:.12em;color:#33ff66;background:transparent;border:1px solid #33ff66;padding:12px 30px;cursor:pointer;border-radius:0;text-shadow:inherit}
+#fim button:hover{background:#33ff66;color:#020a02;text-shadow:none}
+#fim .scan{position:fixed;inset:0;z-index:3;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.28) 0,rgba(0,0,0,.28) 1px,transparent 1px,transparent 3px)}
+#fim .vig{position:fixed;inset:0;z-index:4;pointer-events:none;background:radial-gradient(circle at center,transparent 50%,rgba(0,0,0,.8) 100%)}
+`;
+async function cenaFinal(v, motivo) {
+  try {
+    const lv = v.lado_id, lp = lv === 1 ? 2 : 1, nome = (l) => D[l].nome, t = (ms) => sleep(fast ? Math.min(ms, 300) : ms);
+    await t(1500); // deixa o último efeito da batalha terminar
+    const st = document.createElement('style'); st.textContent = CSS_FIM; document.head.appendChild(st);
+    const el = document.createElement('div'); el.id = 'fim';
+    const lin = (rot, k) => `<tr><td>${rot}</td>${[1, 2].map(l => `<td class="n${l === lv ? ' win' : ''}">${ESTAT[l][k]}</td>`).join('')}</tr>`;
+    el.innerHTML = `<div class="cont"><div class="topo"><img src="${BANDEIRA_FIM[lv]}" alt="${nome(lv)}"><div><h1>VITÓRIA DA ${nome(lv)}</h1><div class="sub">${D[lv].nome_completo || ''}${motivo === 'fuga' ? ' · por fuga do adversário' : ''}</div></div></div>`
+      + `<table><tr><th>ESTATÍSTICAS</th><th>${nome(1)}</th><th>${nome(2)}</th></tr>${lin('Dano causado', 'causado')}${lin('Dano recebido', 'recebido')}</table>`
+      + `<button onclick="location.reload()">Jogar de novo</button></div><div class="scan"></div><div class="vig"></div>`;
+    document.body.appendChild(el);
+    const DUR = 10000, t0 = performance.now();
+    let som = null, vAlvo = (VOL_FIM[lv] ?? 5) / 10;
+    try { som = new Audio(SOM_FIM[lv]); som.volume = 0; som.onerror = () => console.warn('[áudio] não carregou:', SOM_FIM[lv]); som.play().catch(() => { }); } catch (e) { som = null; }
+    const amb = _amb, a0 = amb ? amb.volume : 0;
+    await new Promise(res => { const f = () => { const u = Math.min(1, (performance.now() - t0) / DUR); el.style.opacity = u; if (som) som.volume = vAlvo * u; if (amb) amb.volume = a0 * (1 - u); if (u < 1) requestAnimationFrame(f); else res(); }; f(); });
+    if (amb) amb.pause();
+  } catch (e) { console.warn('[cena final]', e); }
+}
+
+// ================= DEBUG: botão "hit kill no inimigo" (só aparece se o ponto de debug da intro foi ativado) =================
+Luft.aoDebug = () => {
+  if ($('#dbgkill')) return;
+  const b = document.createElement('button'); b.id = 'dbgkill'; b.textContent = 'hit kill no inimigo';
+  b.style.cssText = 'position:absolute;top:40px;left:50%;transform:translateX(-50%);z-index:20;font-size:12px;padding:4px 10px;background:#5a1f1f;color:#ffd6d6;border:1px solid #a33;cursor:pointer;border-radius:3px';
+  let ocupado = false;
+  const bloq = (e) => e.stopImmediatePropagation();
+  b.onclick = async () => {
+    if (ocupado || !pendFim || !enemy || U.unidade_derrotada(enemy)) return; // só no seu turno, com o menu de ações aberto
+    ocupado = true; dbgKill = true; addEventListener('keydown', bloq, true); box.style.pointerEvents = 'none';
+    try {
+      for (let i = 0; i < 6 && !U.unidade_derrotada(enemy); i++) await U.aplicar_dano(enemy, Math.max(1, U.vida_atual_principal(enemy)), true);
+      const pv = pend && pend.find((it) => it.chave === 'pular_vez'); // encerra o turno sem gastar nada
+      if (U.unidade_derrotada(enemy)) { if (pv && pendFim) pendFim(pv); else addLog('[debug] Inimigo eliminado. Faça qualquer ação para encerrar o turno.'); }
+    } catch (e) { console.warn('[debug hit kill]', e); }
+    finally { dbgKill = false; removeEventListener('keydown', bloq, true); box.style.pointerEvents = ''; ocupado = false; }
+  };
+  $('#stage').appendChild(b);
+};
 let menuFlowPre = null;
 async function menuFlow(ladoPre) {
   if (ladoPre) {
@@ -861,7 +929,7 @@ async function menuFlow(ladoPre) {
     await Luft.api.iniciar(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
     box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
-    addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h');
+    addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
     return;
   }
   menu.innerHTML = '<h1>L U F T B A L L O N S</h1><div>Selecione o modo de exibição</div><button id="mi">Modo imersivo (pausas e efeitos)</button><button id="mr">Modo rápido (texto instantâneo)</button>';
@@ -886,7 +954,7 @@ async function menuFlow(ladoPre) {
   await Luft.api.iniciar(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
   box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
-  addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h');
+  addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
 }
 Luft.iniciar = (lado) => menuFlow(lado); loop();
 })();

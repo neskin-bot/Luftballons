@@ -332,7 +332,7 @@ async function intro() {
   const t2 = tela('<div class="fala">“Freedom is indivisible, and when one man is enslaved, all are not free.”<small>— John F. Kennedy, Berlin, 1963</small></div><button class="skip">&gt;&gt;&gt;</button>');
   const pt = document.createElement('div');
   pt.style.cssText = 'position:fixed;top:6px;right:6px;width:6px;height:6px;border-radius:50%;background:#fff;opacity:.35;cursor:pointer;z-index:99';
-  pt.onclick = () => { Luft.C.PONTOS_INICIAIS = 999999; pt.style.background = '#4caf50'; pt.style.opacity = '1'; pt.onclick = null; };
+  pt.onclick = () => { Luft.C.PONTOS_INICIAIS = 999999; try { Luft.debug = true; if (Luft.aoDebug) Luft.aoDebug(); } catch (e) { } pt.style.background = '#4caf50'; pt.style.opacity = '1'; pt.onclick = null; };
   t2.appendChild(pt);
   const somK = tocar('kennedy');
   await Promise.race([sleep(13000), new Promise(r => t2.querySelector('.skip').onclick = r)]);
