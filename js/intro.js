@@ -4,12 +4,10 @@ const NOMES = { 1: 'OTAN', 2: 'OVD' };
 const SIGNIF = { 1: 'North Atlantic Treaty Organization', 2: 'Warsaw Treaty Organization' };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const SONS = { ping: 'assets/audio/radar_ping.mp3', alarme: 'assets/audio/alarme.mp3', kennedy: 'assets/audio/kennedy.mp3', tv: 'assets/audio/tv.mp3', correndo: 'assets/audio/correndo.mp3', menu: 'assets/audio/menu.mp3' };
-// VOLUMES (0 a 10) — normal = 5
 const VOL = { ping: 5, alarme: .3, kennedy: 5, tv: 5, menu: 1, correndo: 5 };
 const fade = (a, ms = 1500) => { if (!a) return; const v0 = a.volume, t = performance.now(); const f = () => { const u = Math.min(1, (performance.now() - t) / ms); a.volume = v0 * (1 - u); if (u < 1) setTimeout(f, 40); else a.pause(); }; f(); };
 const tocar = (nome, loop = false) => { try { const a = new Audio(SONS[nome]); a.loop = loop; a.volume = (VOL[nome] ?? 5) / 10; a.onerror = () => console.warn('[áudio] não carregou:', SONS[nome], a.error && a.error.code); const p = a.play(); if (p && p.catch) p.catch(e => console.warn('[áudio] bloqueado/erro:', SONS[nome], e && e.name)); return a; } catch (e) { console.warn('[áudio] exceção', e); return null; } };
 
-// ---- efeitos sonoros sintetizados (WebAudio, sem arquivos) ----
 const SFX = (() => {
   let A, hum;
   const ac = () => { try { A = A || new (window.AudioContext || window.webkitAudioContext)(); if (A.state === 'suspended') A.resume(); return A; } catch (e) { return null; } };
@@ -71,6 +69,14 @@ const css = `
 #intro .go{font:inherit;font-size:1.15rem;letter-spacing:.12em;margin-top:60px;color:#33ff66;background:transparent;border:1px solid #33ff66;padding:12px 30px;cursor:pointer;border-radius:0;text-shadow:inherit;opacity:0;transition:opacity .6s,background .15s,color .15s}
 #intro .go.on{opacity:1}
 #intro .go:hover{background:#33ff66;color:#020a02;text-shadow:none}
+#intro .dif{display:flex;flex-direction:column;align-items:center;gap:12px;margin:-14px 0 34px;opacity:0;transition:opacity .8s;pointer-events:none}
+#intro .dif.on{opacity:1;pointer-events:auto}
+#intro .dif .rot{letter-spacing:.2em;opacity:.7;font-size:.9rem}
+#intro .dif .opc{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+#intro .dif button{font:inherit;font-size:1rem;letter-spacing:.12em;color:#33ff66;background:transparent;border:1px solid #33ff66;padding:8px 18px;cursor:pointer;border-radius:0;text-shadow:inherit}
+#intro .dif button:hover{background:rgba(51,255,102,.18)}
+#intro .dif button.sel{background:#33ff66;color:#020a02;text-shadow:none}
+#intro .dif .desc{min-height:1.4em;font-size:.85rem;letter-spacing:.06em;opacity:.8;text-align:center;max-width:620px}
 #intro .band{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;opacity:0;transition:opacity .8s;pointer-events:none}
 #intro .band.on{opacity:1;pointer-events:auto}
 #intro .band figure{margin:0;display:flex;flex-direction:column;align-items:center;cursor:pointer;transition:transform .15s}
@@ -156,7 +162,6 @@ async function ligarTV() {
   await jit.finished.catch(() => {});
 }
 
-
 function desenharRadar(ctx, t, T) {
   const W = ctx.canvas.width, H = ctx.canvas.height, CX = W / 2, CY = H / 2, R = 330, TAU = Math.PI * 2;
   const mix = (a, b, k) => Math.round(a + (b - a) * k);
@@ -208,21 +213,19 @@ function desenharRadar(ctx, t, T) {
   }
 }
 
-// imagens da sala com a tela magenta já recortada (assets/cenas/sala_*_buraco.png) e posição da tela (x, y, largura, altura)
 const SALAS = { 1: { src: 'assets/cenas/sala_otan_buraco.png', r: [594, 327, 189, 150], mesa: 512 }, 2: { src: 'assets/cenas/sala_ovd_buraco.png', r: [602, 318, 172, 135], mesa: 510 } };
 async function prepararSala(lado) {
   const S = SALAS[lado], img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = S.src; });
   if (!img) return null;
   const pad = 3, rect = { x: S.r[0] - pad, y: S.r[1] - pad, w: S.r[2] + pad * 2, h: S.r[3] + pad * 2 };
   rect.mesa = S.mesa; rect.cx = rect.x + rect.w / 2; rect.cy = rect.y + rect.h / 2;
-  return { img, W: 1376, H: 768, NW: img.naturalWidth, NH: img.naturalHeight, rect }; // W/H = espaço lógico das coordenadas; NW/NH = resolução real da imagem (pode ser maior, ex.: upscale 3x)
+  return { img, W: 1376, H: 768, NW: img.naturalWidth, NH: img.naturalHeight, rect };
 }
 
-// tiras com 6 quadros da corrida (assets/intro/correndo_*.png): largura/altura de cada quadro e direção da corrida
 const CORRIDA = { 1: { src: 'assets/intro/correndo_otan.png', fw: 389, fh: 433, dir: 1, vis: .66 }, 2: { src: 'assets/intro/correndo_ovd.png', fw: 314, fh: 530, dir: 1, vis: .62 } };
 async function prepararCorrida(lado) {
   const C = CORRIDA[lado], img = await new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = C.src; });
-  return img ? { ...C, fw: img.naturalWidth / 6, fh: img.naturalHeight } : null; // 6 quadros iguais lado a lado: o tamanho do quadro sai da própria imagem, então vale pra tira com upscale
+  return img ? { ...C, fw: img.naturalWidth / 6, fh: img.naturalHeight } : null;
 }
 
 async function cenaRadar(lado) {
@@ -234,10 +237,9 @@ async function cenaRadar(lado) {
   const VW = root.clientWidth, VH = root.clientHeight;
   const IW = sala ? sala.W : 1376, IH = sala ? sala.H : 768;
   const R = sala ? sala.rect : { x: IW / 2 - 95, y: IH / 2 - 75, w: 190, h: 150, cx: IW / 2, cy: IH / 2 };
-  const S0 = Math.min(.92 * VH / R.h, .96 * VW / R.w), S1 = Math.max(VW / IW, VH / 360), CY1 = 190 + (VH / S1) / 2; // enquadramento final: monitor + só a parte de baixo das bandeiras (topo da câmera em y=190)
+  const S0 = Math.min(.92 * VH / R.h, .96 * VW / R.w), S1 = Math.max(VW / IW, VH / 360), CY1 = 190 + (VH / S1) / 2;
   const smooth = (u) => { u = Math.max(0, Math.min(1, u)); return u * u * u * (u * (6 * u - 15) + 10); };
 
-  // mundo: tudo em coordenadas da imagem da sala; a câmera é só uma transformação
   const world = el('world'); world.style.width = IW + 'px'; world.style.height = IH + 'px';
   const sbg = el(''); Object.assign(sbg.style, { left: R.x + 'px', top: R.y + 'px', width: R.w + 'px', height: R.h + 'px', opacity: 0, background: 'radial-gradient(ellipse at center,#06180a 0%,#020a02 70%)' });
   const alA = el('alarmeW'); Object.assign(alA.style, { left: '-4000px', top: '-4000px', width: (IW + 8000) + 'px', height: (IH + 8000) + 'px', background: 'rgb(255,25,15)' });
@@ -265,14 +267,12 @@ async function cenaRadar(lado) {
   cv.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 1600, easing: 'ease-in', fill: 'forwards' });
   const T = { ping: 2.0, alarme: 5.0, zoom: 6.0, dur: 3.8, hold: 1.8, alvo: { a: 5.25, r: .56 } };
 
-  // soldados correndo em primeiro plano: tira de 6 quadros (assets/intro/correndo_*.png), escuros e levemente fora de foco
   const tRun = T.zoom + T.dur + .2;
-  const MESA = 0; // ajuste fino em px: positivo desce a cintura dos soldados, negativo sobe
-  const waistY = ((R.mesa || (R.y + R.h)) - 190) * S1 + MESA; // topo da mesa do radar na tela (enquadramento final): a cintura dos soldados fica nele
+  const MESA = 0;
+  const waistY = ((R.mesa || (R.y + R.h)) - 190) * S1 + MESA;
   let runners = [], tFim = T.zoom + T.dur + T.hold;
   if (sala && cor) {
     const corre = el('corre'); root.insertBefore(corre, skip);
-    // ALTURA = parte visível do soldado (cabeça até a cintura) em fração da altura da tela; independe da resolução da imagem
     const ALTURA = .62, FADE = .14;
     const ks = [1, .94, .97, .92, .95], dl = [0, .42, .8, 1.15, 1.6], du = [1.8, 2.1, 1.9, 2.2, 2.0], ph = [0, 2.3, 4.1, 1.2, 3.4], br = [.85, .72, .8, .68, .76];
     runners = ks.map((k, i) => {
@@ -303,8 +303,8 @@ async function cenaRadar(lado) {
     const t = (performance.now() - t0) / 1000;
     desenharRadar(ctx, t, T);
     if (t >= T.ping && !sPing) { sPing = true; tocar('ping'); }
-    if (runners.length && !sCorrer && t >= tRun - 1.0) { sCorrer = true; somCorrer = tocar('correndo'); } // 1.0 = segundos antes dos soldados aparecerem
-    const nVarr = Math.floor(t / 2.2 - T.alvo.a / (Math.PI * 2)); // a barra (período 2.2s) passou sobre o alvo
+    if (runners.length && !sCorrer && t >= tRun - 1.0) { sCorrer = true; somCorrer = tocar('correndo'); }
+    const nVarr = Math.floor(t / 2.2 - T.alvo.a / (Math.PI * 2));
     if (nVarr > ultN) { ultN = nVarr; if (t > T.ping + .05) tocar('ping'); }
     if (t >= T.alarme && !sAlarme) {
       sAlarme = true; alA.classList.add('on'); if (alB) alB.classList.add('on'); somAlarme = tocar('alarme', true);
@@ -363,8 +363,21 @@ async function intro() {
   });
   limpar();
 
-  const t4 = tela('<h2></h2><div class="band"></div>');
-  const band = t4.querySelector('.band');
+  const t4 = tela('<h2></h2><div class="dif"></div><div class="band"></div>');
+  const band = t4.querySelector('.band'), dif = t4.querySelector('.dif');
+  const CD = Luft.C.DIFICULDADES;
+  dif.innerHTML = '<div class="rot">DIFICULDADE</div><div class="opc"></div><div class="desc"></div>';
+  const opc = dif.querySelector('.opc'), desc = dif.querySelector('.desc'), bts = {};
+  const marcar = (k) => {
+    Luft.definir_dificuldade(k);
+    for (const x in bts) bts[x].classList.toggle('sel', x === k);
+    desc.textContent = CD[k].desc + (CD[k].tutorial && Luft.C.TUTORIAL_ATIVO ? ' Inclui tutorial.' : '');
+  };
+  for (const k of Object.keys(CD)) {
+    const b = el('', 'button'); b.textContent = '> ' + CD[k].nome; b.onclick = () => marcar(k);
+    bts[k] = b; opc.appendChild(b);
+  }
+  marcar(Luft.dificuldade);
   const lado = await new Promise(async (res) => {
     for (const l of [1, 2]) {
       const fig = document.createElement('figure');
@@ -376,7 +389,7 @@ async function intro() {
       band.appendChild(fig);
     }
     await digitar(t4.querySelector('h2'), 'Escolha o seu lado', 55);
-    band.classList.add('on');
+    dif.classList.add('on'); band.classList.add('on');
   });
   SFX.humOff(); fade(somMenu, 2000);
   await cenaRadar(lado);

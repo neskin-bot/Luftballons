@@ -13,14 +13,11 @@ for (const [id, a] of Object.entries(ASSETS)) {
 const sprite = (id, pose = 0) => { const a = ASSETS[id], f = a.poses ? a.poses[Math.min(pose, a.poses.length - 1)].file : a.file; return { img: IMG[f], facing: a.facing }; };
 
 const SOL_H = 190, SOLK = SOL_H / 720, PXM = 80;
-// Geometria do sprite do anti-tanque em pe/ajoelhado atirando (px do PNG). cut = coluna onde comeca a ogiva (cortada ao disparar); rk = retangulo da ogiva; front/back = boca e traseira do tubo.
 const AT_GEO = { 2: { iw: 597, ih: 579, cut: 438, rk: [438, 90, 159, 72], rc: [517, 125], front: [596, 125], back: [10, 121] },
-  1: { iw: 615, ih: 633, front: [614, 116], back: [3, 116] } }; // lado 2 = OVD (corta a ogiva e voa como foguete); lado 1 = OTAN (sem corte, so clarao/fumaca/trilha)
+  1: { iw: 615, ih: 633, front: [614, 116], back: [3, 116] } };
 const rockets = [];
-// ajuste fino dos sprites com radio (px do sprite; negativo = move p/ tras). A antena deixa o PNG mais alto/largo, entao alinha os pes com o sprite antigo.
-// BACK_EX: px extras para tras na formacao (OVD: radio e anti-tanque mais ao fundo)
 const BACK_EX = { ovd_smg_b: 40, ovd_at: 70 };
-const SOL_DX = { otan_smg_b_0: -16, otan_smg_b_1: -16.5 }, ANT_H = 38, SOL_ESC = { otan_smg: 1.06, ovd_smg: 1.06 }; // SOL_ESC: fator extra de tamanho por sprite (1.06 = +6%)
+const SOL_DX = { otan_smg_b_0: -16, otan_smg_b_1: -16.5 }, ANT_H = 38, SOL_ESC = { otan_smg: 1.06, ovd_smg: 1.06 };
 const TANK_M = { leve: { 1: 8.2, 2: 6.9 }, medio: { 1: 8.7, 2: 9.0 }, pesado: { 1: 11.3, 2: 10.3 } };
 
 const TV = {
@@ -36,7 +33,7 @@ const ORDEM = { rifle: ['fuz_a', 'fuz_b', 'smg_a', 'smg_b', 'at'], smg: ['smg_a'
 const FRENTE = { rifle: ['fuz_a', 'fuz_b'], smg: ['smg_a', 'smg_b'], anti_tank: ['at'], molotov: ['at'] };
 const DX = 40;
 
-const GROUND = 555, /* altura do chao do campo: menor = sprites mais para cima */ WORLD_W = 2752, X = [480, 2272];
+const GROUND = 555, WORLD_W = 2752, X = [480, 2272];
 let camX = 0, camT = 0;
 const side = (u) => (u === player ? 0 : 1);
 const XC = [440, 2312], cov = (u) => u._cov || 0;
@@ -62,7 +59,7 @@ function drawSquad(u) {
     g.save(); g.translate(x - toEnemy * st.dx, y + st.dy); if (s.facing !== want) g.scale(-1, 1);
     if (u._flash > Date.now() && Math.floor(Date.now() / 60) % 2) g.globalAlpha = 0.4;
     const ox = -w / 2 + (SOL_DX[s.img.src.split('/').pop().replace(/\.png.*$/, '')] || 0) * sc, gx = AT_GEO[u.lado_id];
-    if (id === 'at' && u._atCut && pose === 99 && gx && gx.cut) g.drawImage(s.img, 0, 0, gx.cut, s.img.naturalHeight, ox, -h, w * gx.cut / s.img.naturalWidth, h); // corta a ogiva (foguete ja disparado)
+    if (id === 'at' && u._atCut && pose === 99 && gx && gx.cut) g.drawImage(s.img, 0, 0, gx.cut, s.img.naturalHeight, ox, -h, w * gx.cut / s.img.naturalWidth, h);
     else g.drawImage(s.img, ox, -h, w, h);
     g.restore();
   }
@@ -168,11 +165,8 @@ function drawVeh(u, tp) {
   const L = V.piv ? (gs.facing === 'L' ? V.piv[0] : 1 - V.piv[0]) * gw : (1 - V.an) * gw + pv;
   scene.muz = scene.muz || {}; scene.muz[tp] = { x: P.x + P.k * (mx - dir * pv + dir * Math.cos(ang) * L), y: P.y + P.k * (my - Math.sin(ang) * L) };
 }
-// ---------- caminhão de suporte ----------
 const caminhoBg = new Image(); caminhoBg.src = 'assets/cenas/caminho.png';
-// centros/diâmetro das rodas em pixels do sprite original (ajuste aqui se alguma roda ficar torta)
 const TRK = { otan: { c: [[332, 488], [614, 488], [1350, 492]], d: 222, behind: true }, ovd: { c: [[356, 512], [648, 512], [1426, 512]], d: 248, behind: false } };
-// cena da interceptação: y = chão da rua em caminho.png, w = largura do caminhão, v = velocidade (px/s), mid = meio da rua
 const CAM = { y: 615, w: 600, v: 240, mid: 688 }, TRK_BASE_W = 420, TRK_CAMPO_W = 520;
 function drawCaminhao(lado, x, y, w, dir, dist = 0) {
   const p = lado === 1 ? 'otan' : 'ovd', T = TRK[p], b = sprite(p + '_caminhao_body'); if (!b.img.naturalWidth) return;
@@ -518,9 +512,6 @@ HOOK.wait = (s) => sleep(fast ? 0 : s * 650);
 HOOK.limparTela = () => { logEl.innerHTML = ''; };
 HOOK.resumo = (n, ls) => { addLog(`--- O que aconteceu na rodada ${n} ---`, 'h'); ls.forEach(l => addLog(l)); addLog('-'.repeat(30), 'h'); };
 HOOK.status = (j, i, t) => { $('#turno').textContent = 'Turno ' + t; };
-HOOK.turnoFim = (j, i, t) => Luft.api.status(t, j, i);
-HOOK.danoPersistente = (u, rounds, tipo) => Luft.api.danoPersistente(u.lado_id, rounds, tipo);
-HOOK.itemUsado = (u, chave) => Luft.api.itemUsado(u.lado_id, chave);
 const pop = (u, t, c) => { const p = pos(u); floats.push({ x: p.x, y: p.y - (u.tanque_ativo ? 230 : SOL_H + 45), t, c, life: 60 }); };
 const setPose = (u, k, ms = 700) => { u._pose = k; setTimeout(() => { if (u._pose === k) u._pose = null; }, ms); };
 const flashes = [];
@@ -577,8 +568,6 @@ async function tankMG(a, d) {
     await sleep(55);
   }
 }
-// Fuzil de infantaria. Audio em assets/sons/ (OVD: tiro_ovd_fuzil.mp3 2.79 s | OTAN: tiro_otan_fuzil.mp3 3.00 s). 'tiros' = ms de cada estampido no audio.
-// atiradores: sprite de cada fuzileiro + boca do cano em px do PNG (x, y, largura, altura). modo 'alt' = alterna os fuzileiros a cada tiro; 'ambos' = os dois atiram juntos.
 const FUZIL = {
   2: { snd: 'tiro_ovd_fuzil', dur: 2790, tiros: [390, 780, 1140, 1350, 1540, 1690, 1930], modo: 'alt', atiradores: [{ id: 'fuz_a', x: 636, y: 112, iw: 638, ih: 732 }] },
   1: { snd: 'tiro_otan_fuzil', dur: 3000, tiros: [80, 450, 660, 820, 950, 1060, 1430, 1640], modo: 'alt', atiradores: [{ id: 'fuz_a', x: 620, y: 105, iw: 621, ih: 691 }, { id: 'fuz_b', x: 661, y: 113, iw: 662, ih: 744 }] }
@@ -602,14 +591,12 @@ async function fuzilInf(a, d) {
   }, t));
   await sleep(F.dur);
 }
-// SMG da OVD: audio assets/sons/tiro_ovd_smg.mp3 (2.02 s). Rajadas (ms no audio) e intervalo entre clarões; 'espera' = tempo p/ o esquadrao se posicionar antes de comecar audio+tiros.
 const SMG_OVD = { snd: 'tiro_ovd_smg', dur: 2020, espera: 450, rajadas: [[0, 580], [930, 1160]], passo: 55 };
 async function smgOvd(a, d) {
   await sleep(SMG_OVD.espera);
   const dir = pos(d).x > pos(a).x ? 1 : -1;
   try { const x = new Audio(`assets/sons/${SMG_OVD.snd}.mp3`); x.volume = .9; x.play().catch(() => {}); } catch (e) {}
   for (const [t0, t1] of SMG_OVD.rajadas) for (let t = t0; t < t1; t += SMG_OVD.passo) setTimeout(() => {
-    // boca do cano no sprite ovd_smg_a_1.png (574x673): x=573, y=121 -> fracoes do sprite
     const st = (a._sq && a._sq.smg_a) || { dx: 0, dy: 0 }, now = performance.now(), r = Math.random, P = pos(a), sp = sprite('ovd_smg_a', 99), iw = sp.img.naturalWidth || 574, ih = sp.img.naturalHeight || 673;
     const sc = SOLK * (1 - 0.14 * cov(a)) * (SOL_ESC.ovd_smg_a || 1), w = iw * sc, h = ih * sc;
     const mx = P.x - dir * st.dx + dir * (573 / 574 - .5) * w, my = P.y + st.dy - h * (1 - 121 / 673);
@@ -622,7 +609,6 @@ async function smgOvd(a, d) {
   }, t);
   await sleep(SMG_OVD.dur);
 }
-// SMG da OTAN: audio assets/sons/tiro_otan_smg.mp3 (2.87 s). Mesmo efeito da OVD, nas bocas dos dois soldados (smg_a e smg_b).
 const SMG_OTAN = { snd: 'tiro_otan_smg', dur: 2870, espera: 450, rajadas: [[180, 600], [950, 1450], [1530, 1900]], passo: 55,
   atiradores: [{ id: 'smg_a', x: 555, y: 118, iw: 556, ih: 726 }, { id: 'smg_b', x: 603, y: 299, iw: 604, ih: 869 }] };
 async function smgOtan(a, d) {
@@ -645,14 +631,12 @@ async function smgOtan(a, d) {
   }, t);
   await sleep(SMG_OTAN.dur);
 }
-// Anti-tanque (todos os lados): audio assets/sons/tiro_antitanque.mp3 (5.19 s). Tiro em 0.35 s, impacto em 0.79 s.
-// A funcao retorna no impacto, entao o evento 'dano' (desconto de vida) roda nesse instante; o resto do audio toca sozinho.
-const AT_FX = { snd: 'tiro_antitanque', tiro: 350, impacto: 790, pose: 1400, boca: [115, .60] }; // boca: [px a frente do soldado, fracao da altura] (estimado, ajuste se precisar)
+const AT_FX = { snd: 'tiro_antitanque', tiro: 350, impacto: 790, pose: 1400, boca: [115, .60] };
 async function antiTanque(a, d) {
   const dir = pos(d).x > pos(a).x ? 1 : -1, r = Math.random;
   try { const x = new Audio(`assets/sons/${AT_FX.snd}.mp3`); x.volume = .9; x.play().catch(() => {}); } catch (e) {}
   const geo = AT_GEO[a.lado_id];
-  const pt = (fx, fy) => { // ponto do sprite (px do PNG) -> tela
+  const pt = (fx, fy) => {
     const st = (a._sq && a._sq.at) || { dx: 0, dy: 0 }, P = pos(a), sp = sprite((a.lado_id === 1 ? 'otan' : 'ovd') + '_at', 99), iw = sp.img.naturalWidth || geo.iw, ih = sp.img.naturalHeight || geo.ih;
     const sc = SOLK * (1 - 0.14 * cov(a)) * (SOL_ESC[(a.lado_id === 1 ? 'otan' : 'ovd') + '_at'] || 1), w = iw * sc, h = ih * sc;
     return { x: P.x - dir * st.dx + dir * (fx / geo.iw - .5) * w, y: P.y + st.dy - h * (1 - fy / geo.ih), sc };
@@ -744,7 +728,7 @@ const pick = (items, back) => new Promise(res => {
   let vn = 0;
   for (const it of items) {
     if (it.n === null) { const [ic, tx] = acInfo(it.texto), d = document.createElement('div'); d.className = 'card off'; d.title = it.texto; d.innerHTML = `<span class="cl">${esc(tx)}</span>`; box.appendChild(d); continue; }
-    if (!back && SIDE.includes(it.chave)) continue; // essas opcoes ficam nos paineis laterais
+    if (!back && SIDE.includes(it.chave)) continue;
     const b = document.createElement('button'); b.className = 'card' + (ATK.includes(it.chave) ? ' atk' : ''); b.title = it.texto;
     const num = it.n ? ++vn : 0;
     b.innerHTML = `${num ? `<span class="ck">${num}</span>` : ''}<span class="cl">${esc(acRot(it))}</span><span class="cb">${acBadges(it)}</span>`;
@@ -851,13 +835,12 @@ function custos() {
 let _amb = null;
 function somAmbiente() { if (_amb) return; _amb = new Audio('assets/sons/ambiente.mp3'); _amb.loop = true; _amb.volume = 0.5; _amb.play().catch(() => {}); }
 
-// ================= CENA FINAL (somente visual; não mexe no backend) =================
 const SOM_FIM = { 1: 'assets/audio/vitoria_otan.mp3', 2: 'assets/audio/vitoria_ovd.mp3' };
-const VOL_FIM = { 1: 5, 2: 5 }; // volume 0 a 10 (normal = 5)
+const VOL_FIM = { 1: 5, 2: 5 };
 const BANDEIRA_FIM = { 1: 'assets/cenas/flag_otan.jpg', 2: 'assets/cenas/flag_ovd.jpg' };
 let dbgKill = false;
 const ESTAT = { 1: { causado: 0, recebido: 0 }, 2: { causado: 0, recebido: 0 } };
-const fxEstat = HOOK.fx; // só observa o evento 'dano' e repassa a chamada intacta
+const fxEstat = HOOK.fx;
 HOOK.fx = (n, d) => {
   try { if (!dbgKill && n === 'dano' && d && d.u && d.dano > 0) { const l = d.u.lado_id, o = l === 1 ? 2 : 1; ESTAT[l].recebido += d.dano; ESTAT[o].causado += d.dano; } } catch (e) { }
   return fxEstat(n, d);
@@ -882,7 +865,7 @@ const CSS_FIM = `
 async function cenaFinal(v, motivo) {
   try {
     const lv = v.lado_id, lp = lv === 1 ? 2 : 1, nome = (l) => D[l].nome, t = (ms) => sleep(fast ? Math.min(ms, 300) : ms);
-    await t(1500); // deixa o último efeito da batalha terminar
+    await t(1500);
     const st = document.createElement('style'); st.textContent = CSS_FIM; document.head.appendChild(st);
     const el = document.createElement('div'); el.id = 'fim';
     const lin = (rot, k) => `<tr><td>${rot}</td>${[1, 2].map(l => `<td class="n${l === lv ? ' win' : ''}">${ESTAT[l][k]}</td>`).join('')}</tr>`;
@@ -899,7 +882,6 @@ async function cenaFinal(v, motivo) {
   } catch (e) { console.warn('[cena final]', e); }
 }
 
-// ================= DEBUG: botão "hit kill no inimigo" (só aparece se o ponto de debug da intro foi ativado) =================
 Luft.aoDebug = () => {
   if ($('#dbgkill')) return;
   const b = document.createElement('button'); b.id = 'dbgkill'; b.textContent = 'hit kill no inimigo';
@@ -907,11 +889,11 @@ Luft.aoDebug = () => {
   let ocupado = false;
   const bloq = (e) => e.stopImmediatePropagation();
   b.onclick = async () => {
-    if (ocupado || !pendFim || !enemy || U.unidade_derrotada(enemy)) return; // só no seu turno, com o menu de ações aberto
+    if (ocupado || !pendFim || !enemy || U.unidade_derrotada(enemy)) return;
     ocupado = true; dbgKill = true; addEventListener('keydown', bloq, true); box.style.pointerEvents = 'none';
     try {
       for (let i = 0; i < 6 && !U.unidade_derrotada(enemy); i++) await U.aplicar_dano(enemy, Math.max(1, U.vida_atual_principal(enemy)), true);
-      const pv = pend && pend.find((it) => it.chave === 'pular_vez'); // encerra o turno sem gastar nada
+      const pv = pend && pend.find((it) => it.chave === 'pular_vez');
       if (U.unidade_derrotada(enemy)) { if (pv && pendFim) pendFim(pv); else addLog('[debug] Inimigo eliminado. Faça qualquer ação para encerrar o turno.'); }
     } catch (e) { console.warn('[debug hit kill]', e); }
     finally { dbgKill = false; removeEventListener('keydown', bloq, true); box.style.pointerEvents = ''; ocupado = false; }
@@ -924,9 +906,9 @@ async function menuFlow(ladoPre) {
     fast = false;
     menu.style.display = 'none';
     player = U.criar_unidade(ladoPre); enemy = U.criar_unidade(ladoPre === 1 ? 2 : 1);
-    addLog(`Você escolheu: ${D[ladoPre].nome} (${D[ladoPre].nome_completo}).`); addLog('A batalha vai começar!'); somAmbiente();
+    addLog(`Você escolheu: ${D[ladoPre].nome} (${D[ladoPre].nome_completo}).`); addLog(`Dificuldade: ${Luft.dif().nome}.`); addLog('A batalha vai começar!'); somAmbiente();
     await sleep(800);
-    await Luft.api.iniciar(player, enemy);
+    if (C.TUTORIAL_ATIVO && Luft.dif().tutorial && Luft.tutorial) await Luft.tutorial(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
     box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
     addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
@@ -949,9 +931,9 @@ async function menuFlow(ladoPre) {
   menu.style.display = 'none';
   if (menuFlowPre) { menuFlowPre = null; }
   player = U.criar_unidade(l); enemy = U.criar_unidade(l === 1 ? 2 : 1);
-  addLog(`Você escolheu: ${D[l].nome} (${D[l].nome_completo}).`); addLog('A batalha vai começar!'); somAmbiente();
+  addLog(`Você escolheu: ${D[l].nome} (${D[l].nome_completo}).`); addLog(`Dificuldade: ${Luft.dif().nome}.`); addLog('A batalha vai começar!'); somAmbiente();
   await sleep(fast ? 0 : 800);
-  await Luft.api.iniciar(player, enemy);
+    if (C.TUTORIAL_ATIVO && Luft.dif().tutorial && Luft.tutorial) await Luft.tutorial(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
   box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
   addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h'); cenaFinal(v, motivo);

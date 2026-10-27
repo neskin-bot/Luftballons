@@ -1,15 +1,11 @@
-/* Luftballons - núcleo lógico (porte 1:1 do Python). Sem DOM.
-   A UI se pluga em Luft.HOOK (wait, fx, qte, escolherAcao, resumo, status, say, limparTela). */
 (function (root) {
 'use strict';
 const L = {};
 const HOOK = L.HOOK = {
   say() {}, wait: async () => {}, fx: async () => {}, qte: async () => false,
   escolherAcao: async () => 'pular_vez', resumo() {}, status() {}, limparTela() {},
-  turnoFim() {}, danoPersistente() {}, itemUsado() {}, // ganchos do back-end
 };
 
-// ---------- utils ----------
 const ri = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 const rand100 = () => ri(1, 100);
 const uniform = (a, b) => a + Math.random() * (b - a);
@@ -27,7 +23,6 @@ L.mostrar_resumo = (n) => {
   HOOK.resumo(n, LOG.linhas.filter(l => l.trim() && !l.startsWith('===')));
 };
 
-// ---------- config ----------
 const C = L.C = {
   SUPORTE_AEREO_ATIVO: true,
   DADOS_LADOS: {
@@ -59,7 +54,7 @@ const C = L.C = {
   DANO_INCENDIARIO_POR_RODADA: 3, DURACAO_INCENDIARIO_ANTITANQUE: 3,
   FATOR_DANO_ARMA_NORMAL_VS_TANQUE: 0.10,
   COBERTURA_REDUCAO_MIN: 0.40, COBERTURA_REDUCAO_MAX: 0.70,
-  QTE_TEMPO_SEGUNDOS: 2.0, QTE_CHANCE_BOT: 50, BOT_CHANCE_COBERTURA_ARTILHARIA: 70,
+  QTE_TEMPO_SEGUNDOS: 2.0,
   DANO_TANQUE_METRALHADORA: { faixa: [2, 8] }, TANQUE_DANO_MIN_ACERTO: 5,
   TANQUE_FATOR_MUNICAO_ERRADA: 0.25,
   LINHA_SUPORTE: {
@@ -67,7 +62,6 @@ const C = L.C = {
       dano_tiro: { 1: [8, 12], 2: [6, 9] }, cooldown_rodadas: { 1: 4, 2: 3 }, rodadas_para_chegar: 1 },
     antiaerea: { nomes: { 1: 'VADS', 2: 'Shilka' }, custo_compra: 12, chance_interceptacao: { 1: 35, 2: 25 } },
   },
-  BOT_RESERVA_COMPRA_SUPORTE: 10,
 };
 Object.assign(C.CUSTOS_ACAO, {
   comprar_artilharia: C.LINHA_SUPORTE.artilharia.custo_compra, solicitar_artilharia: C.LINHA_SUPORTE.artilharia.custo_uso,
@@ -76,18 +70,24 @@ Object.assign(C.CUSTOS_ACAO, {
 });
 
 C.CAMINHAO = { custo_chamar: 0, rodadas_para_chegar: 5, vida: 30, bonus_pontos: 5, fator_dano: 0.5 };
-C.BOT_CHANCE_CHAMAR_CAMINHAO = 60; C.BOT_CHANCE_INTERCEPTAR = 70;
+C.DIFICULDADE_PADRAO = 'medio';
+C.TUTORIAL_ATIVO = false;
+C.DIFICULDADES = {
+  facil: { nome: 'FÁCIL', desc: 'Bot passivo, erra bastante e ganha menos pontos.', temp: 30, erro: .08, persona: 'passivo', muda: false, blefa: false, le_jogador: false, planeja: false, combos: false, finaliza: false, qte: 20, pontos_rodada: -2, tutorial: true },
+  medio: { nome: 'MÉDIO', desc: 'Bot equilibrado, com estilo de jogo sorteado a cada partida.', temp: 18, erro: .03, persona: 'sorteada', muda: false, blefa: false, le_jogador: false, planeja: false, combos: false, finaliza: true, qte: 50, pontos_rodada: 0, tutorial: false },
+  dificil: { nome: 'DIFÍCIL', desc: 'Bot que lê as suas jogadas, planeja e muda de estilo no meio da partida.', temp: 8, erro: 0, persona: 'sorteada', muda: true, blefa: false, le_jogador: true, planeja: true, combos: false, finaliza: true, qte: 70, pontos_rodada: 0, tutorial: false },
+  impossivel: { nome: 'IMPOSSÍVEL', desc: 'Bot que blefa, encadeia combos e joga com vantagem de pontos.', temp: 4, erro: 0, persona: 'sorteada', muda: true, blefa: true, le_jogador: true, planeja: true, combos: true, finaliza: true, qte: 90, pontos_rodada: 5, tutorial: false },
+};
 C.CUSTOS_ACAO.chamar_caminhao = C.CAMINHAO.custo_chamar; C.CUSTOS_ACAO.interceptar_caminhao = C.LINHA_SUPORTE.artilharia.custo_uso;
 const SUPR_CAMINHAO = new Set(['suprimento_medico', 'suprimento_municao_rifle', 'suprimento_municao_smg', 'suprimento_municao_anti_tank']);
 
-// ---------- unidade ----------
 const U = L.U = {};
 U.criar_unidade = (lado) => { const d = C.DADOS_LADOS[lado]; return {
   lado_id: lado, nome: d.nome, vida_atual: d.vida_maxima, vida_maxima: d.vida_maxima, pontos: C.PONTOS_INICIAIS,
   municao_rifle: C.MUNICAO_MAXIMA_RIFLE, municao_smg: C.MUNICAO_MAXIMA_SMG, municao_anti_tank: C.MUNICAO_MAXIMA_ANTI_TANK,
   efeito_incendiario_restante: 0, tanque_ativo: false, tanque_classe: null, tanque_combustivel: 0, tanque_recem_chamado: false,
   tanque_vida: 0, tanque_municao: null, tanque_recarga: 0, em_cobertura: false, cobertura_pendente: false,
-  fugiu: false, linha_suporte: [], molotov_restante: 0, arma_no_chao: false, ataque_aereo: null, aviao_cooldown: 0, caminhao: null }; };
+  fugiu: false, linha_suporte: [], molotov_restante: 0, arma_no_chao: false, ataque_aereo: null, aviao_cooldown: 0, caminhao: null, hist: [], ajuste_pontos: 0, interceptado: 0, ia: null }; };
 U.nome_tanque = (lado, classe) => C.TANQUES[lado][classe].nome;
 U.nome_alvo_principal = (u) => u.tanque_ativo ? U.nome_tanque(u.lado_id, u.tanque_classe) : C.DADOS_LADOS[u.lado_id].nome;
 U.vida_atual_principal = (u) => u.tanque_ativo ? u.tanque_vida : u.vida_atual;
@@ -95,7 +95,7 @@ U.vida_maxima_principal = (u) => u.tanque_ativo ? C.TANQUES[u.lado_id][u.tanque_
 U.unidade_derrotada = (u) => u.tanque_ativo ? false : u.vida_atual <= 0;
 U.pode_pagar = (u, a) => u.pontos >= C.CUSTOS_ACAO[a];
 U.pagar = (u, a) => { u.pontos -= C.CUSTOS_ACAO[a]; };
-U.ganhar_pontos_turno = (u) => { u.pontos += C.GANHO_PONTOS_TURNO + (CM.ativo(u) ? C.CAMINHAO.bonus_pontos : 0); };
+U.ganhar_pontos_turno = (u) => { u.pontos += Math.max(0, C.GANHO_PONTOS_TURNO + (CM.ativo(u) ? C.CAMINHAO.bonus_pontos : 0) + u.ajuste_pontos); };
 U.ativar_cobertura = (u) => { u.cobertura_pendente = true; };
 U.consumir_cobertura_se_ativa = (u, dano) => {
   if (!u.em_cobertura) return dano;
@@ -143,7 +143,6 @@ U.usos_maximos = (a) => MUN[a] ? Math.floor(C[MUN[a][2]] / C[MUN[a][1]]) : 0;
 U.consumir_municao = (u, a) => { if (MUN[a]) u[MUN[a][0]] -= C[MUN[a][1]]; };
 U.recarregar_municao = (u, a) => { if (MUN[a]) u[MUN[a][0]] = C[MUN[a][2]]; };
 
-// ---------- ataques ----------
 const A = L.A = {};
 A.ataque_rifle = async (at, def) => {
   const d = C.DADOS_LADOS[at.lado_id];
@@ -172,7 +171,7 @@ A.ataque_anti_tank = async (at, def) => {
   let dano, desc;
   if (def.tanque_ativo) {
     dano = ri(13, 23);
-    if (Math.random() < 0.1) { dano = 30; def.efeito_incendiario_restante = C.DURACAO_INCENDIARIO_ANTITANQUE; desc = 'CRÍTICO no blindado, incendiando-o'; HOOK.danoPersistente(def, C.DURACAO_INCENDIARIO_ANTITANQUE, 'incendio_antitanque'); }
+    if (Math.random() < 0.1) { dano = 30; def.efeito_incendiario_restante = C.DURACAO_INCENDIARIO_ANTITANQUE; desc = 'CRÍTICO no blindado, incendiando-o'; }
     else desc = 'acerta o blindado';
   } else { dano = ri(5, 10); desc = 'pouco eficaz contra infantaria'; }
   dano = U.dano_com_buff(def, dano);
@@ -183,13 +182,12 @@ A.ataque_anti_tank = async (at, def) => {
 };
 A.ataque_molotov = async (at, def) => {
   const d = C.DADOS_LADOS[at.lado_id];
-  at.arma_no_chao = true; def.molotov_restante = C.MOLOTOV.rodadas; HOOK.danoPersistente(def, C.MOLOTOV.rodadas, 'molotov');
+  at.arma_no_chao = true; def.molotov_restante = C.MOLOTOV.rodadas;
   say(`${at.nome} larga o ${d.arma_anti_tank_nome} no chão, acende uma molotov e a arremessa!`);
   say(`${U.nome_alvo_principal(def)} pega fogo!`);
   await fx('molotov', { at, def }); await espera(1.5);
 };
 
-// ---------- efeitos ----------
 L.aplica_efeito_incendiario = async (u) => {
   if (u.efeito_incendiario_restante > 0 && !U.unidade_derrotada(u)) {
     await U.aplicar_dano(u, C.DANO_INCENDIARIO_POR_RODADA);
@@ -207,7 +205,6 @@ L.aplica_molotov = async (u) => {
   say(`O fogo da molotov queima ${nome}: ${ef} de dano.`); await espera(1.3);
 };
 
-// ---------- suprimentos ----------
 const S = L.S = {};
 S.suprimento_medico = async (u) => { const d = C.DADOS_LADOS[u.lado_id]; U.aplicar_cura(u, C.CURA_SUPRIMENTO);
   say(`${d.caminhao_nome}: ${U.nome_alvo_principal(u)} recupera ${C.CURA_SUPRIMENTO} de vida.`); await fx('suprimento', { u, tipo: 'medico' }); await espera(1); };
@@ -278,7 +275,6 @@ T.carregar = async (u, tipo) => {
   await fx('tanque_carrega', { u, tipo }); await espera(1);
 };
 
-// ---------- linha de suporte ----------
 const LS = L.LS = {};
 const item = (u, t) => u.linha_suporte.find(i => i.tipo === t) || null;
 LS.tem = (u, t) => item(u, t) !== null;
@@ -344,7 +340,7 @@ LS.processa_ataque_aereo = async (u, op) => {
   m.chegada -= 1;
   if (LS.tentar_interceptar(op)) {
     say(`A ${LS.nome(op, 'antiaerea')} intercepta e derruba o ${av}!`);
-    await fx('interceptacao', { aviao_de: u, antiaerea_de: op }); encerrar(u); await espera(1.5); return;
+    await fx('interceptacao', { aviao_de: u, antiaerea_de: op }); u.interceptado += 1; encerrar(u); await espera(1.5); return;
   }
   if (m.chegada > 0) { say(`O ${av} segue a caminho do alvo (${m.chegada} rodada(s)).`); await espera(1); return; }
   const alvo = m.alvo; encerrar(u);
@@ -359,7 +355,6 @@ LS.processa_ataque_aereo = async (u, op) => {
   await espera(1.5);
 };
 
-// ---------- caminhão de suporte ----------
 const CM = L.CM = {};
 const cnome = (u) => C.DADOS_LADOS[u.lado_id].caminhao_nome;
 CM.ativo = (u) => !!u.caminhao && u.caminhao.estado === 'ativo';
@@ -374,7 +369,6 @@ CM.dano = async (u, ef) => { if (!CM.ativo(u)) return; const d = pyRound(ef * C.
   if (u.caminhao.vida === 0) await CM.destruir(u, 'dano'); };
 CM.destruir = async (u, motivo) => { say(`${cnome(u)} destruído!`); await fx('caminhao_destruido', { u, motivo }); u.caminhao = null; await espera(1); };
 
-// ---------- ações (turnos) ----------
 const Tn = L.Tn = {};
 const ACOES_ATAQUE = { rifle: A.ataque_rifle, submetralhadora: A.ataque_submetralhadora, anti_tank: A.ataque_anti_tank, molotov: A.ataque_molotov,
   tanque_metralhadora: T.ataque_tanque_metralhadora, tanque_perfurante: T.ataque_tanque_perfurante, tanque_explosivo: T.ataque_tanque_explosivo,
@@ -430,7 +424,6 @@ Tn.montar_opcoes_disponiveis = (u) => {
   add('fugir', 'Fugir');
   return o;
 };
-// dados dos submenus (a UI desenha os botões)
 Tn.opcoes_suprimento = (u) => {
   const c = C.CUSTOS_ACAO, na = C.DADOS_LADOS[u.lado_id].arma_anti_tank_nome;
   const r = [{ chave: 'suprimento_medico', texto: `Médico (+${C.CURA_SUPRIMENTO} HP, ${c.suprimento_medico} pts)` },
@@ -485,6 +478,7 @@ Tn.validar_acao = (chave, u, op) => {
 Tn.executar_acao = async (chave, u, op) => {
   const erro = Tn.validar_acao(chave, u, op);
   if (erro) { say(erro); await espera(1.2); return; }
+  u.hist.push(chave); if (u.hist.length > 10) u.hist.shift();
   if (chave === 'pular_vez') { u.pontos += C.BONUS_PULAR_VEZ; say(`${u.nome} reagrupa (+${C.BONUS_PULAR_VEZ} pts).`); await espera(1.3); }
   else if (chave === 'fugir') { u.fugiu = true; say(`${u.nome} recua e abandona o campo de batalha!`); await espera(1.5); }
   else if (chave === 'sair_tanque') await T.sair_do_tanque(u);
@@ -496,7 +490,7 @@ Tn.executar_acao = async (chave, u, op) => {
     U.pagar(u, chave);
     if (chave in ACOES_ATAQUE) await ACOES_ATAQUE[chave](u, op);
     else if (chave.startsWith('carregar_')) await T.carregar(u, chave.slice(9));
-    else if (chave in ACOES_SUPRIMENTO) { await ACOES_SUPRIMENTO[chave](u); if (SUPR_CAMINHAO.has(chave)) HOOK.itemUsado(u, chave); }
+    else if (chave in ACOES_SUPRIMENTO) { await ACOES_SUPRIMENTO[chave](u); }
     else if (chave.startsWith('ataque_aereo_')) await LS.solicitar_ataque_aereo(u, chave.slice(13));
     else if (chave.startsWith('comprar_')) await LS.comprar(u, chave.slice(8));
     else if (chave === 'chamar_caminhao') await CM.chamar(u);
@@ -505,110 +499,200 @@ Tn.executar_acao = async (chave, u, op) => {
 Tn.turno_humano = async (u, op, turno) => {
   for (;;) {
     L.pausar_registro();
-    const chave = await HOOK.escolherAcao(u, op, turno); // a UI resolve submenus e devolve a chave final (ou null = voltar)
+    const chave = await HOOK.escolherAcao(u, op, turno);
     if (chave === null || chave === undefined) continue;
     const erro = Tn.validar_acao(chave, u, op);
     if (erro) { say(erro); await espera(1.2); continue; }
     L.retomar_registro(); say(`\n▶ ${u.nome}`);
     await Tn.executar_acao(chave, u, op);
-    if (chave in ACOES_SUPRIMENTO && CM.ativo(u)) continue; // suprimento do caminhão é instantâneo: não gasta a vez
+    if (chave in ACOES_SUPRIMENTO && CM.ativo(u)) continue;
     break;
   }
 };
 
-// ---------- bot ----------
 const B = L.B = {};
-B.escolher_pular_ou_cobertura = (u, op, permitirPular = true) => {
-  if (!permitirPular) return 'aguardar';
-  const pct = U.vida_atual_principal(u) / U.vida_maxima_principal(u);
-  const custoLeve = C.TANQUES[op.lado_id].leve.custo_chamar;
-  return (pct < 0.6 || op.tanque_ativo || op.pontos >= custoLeve) ? 'cobertura' : 'pular_vez';
+const DIF = L.dif = () => C.DIFICULDADES[L.dificuldade] || C.DIFICULDADES[C.DIFICULDADE_PADRAO];
+L.dificuldade = C.DIFICULDADE_PADRAO;
+L.definir_dificuldade = (k) => { if (C.DIFICULDADES[k]) L.dificuldade = k; };
+
+const PERSONAS = {
+  passivo:   { ataque: .7,  antitanque: 1,   blindado: .8,  aereo: .6,  artilharia: .8,  suporte: 1,   cura: 1.2, cobertura: 1.2, guardar: 1.5 },
+  agressivo: { ataque: 1.3, antitanque: 1.1, blindado: 1,   aereo: 1.2, artilharia: 1.25, suporte: .9,  cura: .9,  cobertura: .7,  guardar: .5 },
+  defensivo: { ataque: .85, antitanque: 1,   blindado: 1,   aereo: .8,  artilharia: .9,  suporte: 1.3, cura: 1.3, cobertura: 1.4, guardar: 1 },
+  economico: { ataque: 1.1, antitanque: 1,   blindado: 1.25, aereo: .7, artilharia: .8,  suporte: .9,  cura: 1,   cobertura: 1,   guardar: 1.7 },
+  blindado:  { ataque: .8,  antitanque: 1.2, blindado: 1.9, aereo: .8,  artilharia: .9,  suporte: .9,  cura: 1,   cobertura: .9,  guardar: 1.2 },
+  aereo:     { ataque: .85, antitanque: 1,   blindado: .8,  aereo: 1.9, artilharia: 1.2, suporte: 1.2, cura: 1,   cobertura: 1,   guardar: 1.3 },
 };
-// Ataque aereo ignora a blindagem (dano total no tanque); artilharia e armas normais so fazem 10% nele.
-const alvoAereo = (op) => {
-  if (op.tanque_ativo) return 'frente';
-  for (const t of ['artilharia', 'antiaerea']) if (LS.tem(op, t) && rand100() <= 40) return t;
-  return 'frente';
-};
-const acaoSuporte = (u, op, turno) => {
-  if (CM.a_caminho(op) && LS.pode_solicitar_artilharia(u) && U.pode_pagar(u, 'interceptar_caminhao') && rand100() <= C.BOT_CHANCE_INTERCEPTAR) return 'interceptar_caminhao';
-  if (!u.caminhao && (turno <= 2 || rand100() <= C.BOT_CHANCE_CHAMAR_CAMINHAO)) return 'chamar_caminhao';
-  const cfg = C.LINHA_SUPORTE.artilharia, reserva = C.BOT_RESERVA_COMPRA_SUPORTE;
-  if (!LS.tem(u, 'artilharia')) { if (u.pontos >= cfg.custo_compra + reserva) return 'comprar_artilharia'; }
-  else if (!op.tanque_ativo && LS.pode_solicitar_artilharia(u) && U.pode_pagar(u, 'solicitar_artilharia')) return 'solicitar_artilharia';
-  const custoAa = C.LINHA_SUPORTE.antiaerea.custo_compra;
-  if (!LS.tem(u, 'antiaerea') && turno >= 2 && u.pontos >= custoAa + reserva && rand100() <= 35) return 'comprar_antiaerea';
-  if (C.SUPORTE_AEREO_ATIVO && LS.aviao_disponivel(u) && U.pode_pagar(u, 'suporte_aereo') && (op.tanque_ativo ? rand100() <= 85 : turno >= 4 && rand100() <= 30)) {
-    const alvo = alvoAereo(op); if (alvo === 'frente' || LS.tem(op, alvo)) return `ataque_aereo_${alvo}`;
-  }
+const SORTEAVEIS = ['agressivo', 'defensivo', 'economico', 'blindado', 'aereo'];
+const sorteia = (a) => a[Math.floor(Math.random() * a.length)];
+const CAT = (k) => {
+  if (['rifle', 'submetralhadora', 'molotov', 'tanque_metralhadora', 'tanque_perfurante', 'tanque_explosivo'].includes(k) || k.startsWith('carregar_')) return 'ataque';
+  if (k === 'anti_tank' || k === 'recolher_arma' || k === 'suprimento_municao_anti_tank') return 'antitanque';
+  if (k.startsWith('chamar_blindado_')) return 'blindado';
+  if (k.startsWith('ataque_aereo_')) return 'aereo';
+  if (k === 'solicitar_artilharia' || k === 'interceptar_caminhao') return 'artilharia';
+  if (k === 'comprar_artilharia' || k === 'comprar_antiaerea' || k === 'chamar_caminhao') return 'suporte';
+  if (k === 'suprimento_medico') return 'cura';
+  if (k === 'cobertura') return 'cobertura';
+  if (k === 'pular_vez' || k === 'aguardar') return 'guardar';
   return null;
 };
-// melhor blindado que o bot consegue pagar agora (ou null)
-const melhorBlindado = (u) => ['pesado', 'medio', 'leve'].find((k) => u.pontos >= C.TANQUES[u.lado_id][k].custo_chamar) || null;
-const escolherBase = (u, op, turno) => {
-  if (u.tanque_ativo) {
-    const tc = C.TANQUES[u.lado_id][u.tanque_classe];
-    if (u.tanque_combustivel <= 0) return u.pontos >= tc.custo_reabastecer ? 'reabastecer' : 'aguardar';
-    const pronto = T.canhao_pronto(u) && U.pode_pagar(u, 'tanque_' + u.tanque_municao);
-    const certa = pronto && ((u.tanque_municao === 'perfurante') === op.tanque_ativo);
-    if (certa) return 'tanque_' + u.tanque_municao; // atirar com a municao certa vem antes de qualquer compra
-    const as = acaoSuporte(u, op, turno); if (as) return as;
-    if (!T.tanque_operacional(u)) return 'aguardar';
-    const p = U.vida_atual_principal(u) / U.vida_maxima_principal(u);
-    if (p < 0.4 && U.pode_pagar(u, 'suprimento_medico') && rand100() <= 60) return 'suprimento_medico';
-    if (pronto) return 'tanque_' + u.tanque_municao;
-    if (T.pode_carregar(u)) return op.tanque_ativo ? 'carregar_perfurante' : 'carregar_explosivo';
-    // metralhadora nao faz nada contra blindado (10% do dano)
-    if (!op.tanque_ativo && u.pontos >= C.CUSTOS_ACAO.tanque_perfurante + C.CUSTOS_ACAO.tanque_metralhadora) return 'tanque_metralhadora';
-    return 'aguardar';
+const custoDe = (k, u) => k.startsWith('chamar_blindado_') ? C.TANQUES[u.lado_id][k.split('_').pop()].custo_chamar : (C.CUSTOS_ACAO[k] || 0);
+
+const dmgEsp = (k, u, op) => {
+  const tk = op.tanque_ativo, arm = tk ? C.FATOR_DANO_ARMA_NORMAL_VS_TANQUE : 1, cob = op.em_cobertura ? .45 : 1, buff = 1 - C.DADOS_LADOS[op.lado_id].buff_defesa * .5, l = u.lado_id;
+  if (k === 'rifle') return (l === 1 ? 10.5 : 9) * arm * cob * buff;
+  if (k === 'submetralhadora') return (l === 1 ? 16 : 12) * arm * cob * buff;
+  if (k === 'anti_tank') return (tk ? 19 : 7.5) * cob * buff;
+  if (k === 'molotov') { const n = C.MOLOTOV.rodadas - op.molotov_restante; return n <= 0 ? 0 : 5.5 * arm * (cob + n - 1) * buff; }
+  if (k === 'solicitar_artilharia') { const c = C.LINHA_SUPORTE.artilharia, f = c.dano_tiro[l]; return c.tiros * (f[0] + f[1]) / 2 * arm * cob * buff; }
+  if (k === 'ataque_aereo_frente') { const p = LS.tem(op, 'antiaerea') ? C.LINHA_SUPORTE.antiaerea.chance_interceptacao[op.lado_id] / 100 : 0; return 30 * Math.pow(1 - p, LS.rodadas_chegada(u, 'frente')) * cob * buff; }
+  if (k === 'tanque_metralhadora') return 5 * arm * cob * buff;
+  if (k === 'tanque_perfurante' || k === 'tanque_explosivo') { const certa = (k === 'tanque_perfurante') === tk; return tcfg(u).dano_max / 2 * (certa ? 1 : C.TANQUE_FATOR_MUNICAO_ERRADA) * cob * buff; }
+  return 0;
+};
+
+const ler = (op) => {
+  const h = op.hist.slice(-6), n = Math.max(1, h.length), f = (p) => h.filter(p).length / n;
+  return { cob: f((k) => k === 'cobertura'), pass: f((k) => k === 'pular_vez' || k === 'aguardar' || k === 'cobertura'),
+    tank: f((k) => /^(chamar_blindado_|tanque_|carregar_)/.test(k)), ar: f((k) => k.startsWith('ataque_aereo_')) };
+};
+
+const contexto = (u, op, turno, ia, d) => {
+  const hpP = U.vida_atual_principal(u) / U.vida_maxima_principal(u);
+  const prox = op.pontos + C.GANHO_PONTOS_TURNO + (CM.ativo(op) ? C.CAMINHAO.bonus_pontos : 0);
+  const c = { u, op, turno, ia, d, hpP, pts: u.pontos, tk: op.tanque_ativo, cam: CM.ativo(u), opHp: U.vida_atual_principal(op),
+    ameaca: LS.artilharia_a_caminho(op) || LS.aviao_chegando(op), mem: d.le_jogador ? ler(op) : { cob: 0, pass: 0, tank: 0, ar: 0 },
+    opTankProx: false, opAereoProx: false, interceptavel: false, reserva: 0 };
+  if (d.planeja) {
+    c.opTankProx = !op.tanque_ativo && prox >= C.TANQUES[op.lado_id].leve.custo_chamar;
+    c.opAereoProx = LS.aviao_disponivel(op) && prox >= C.SUPORTE_AEREO.custo;
+    c.interceptavel = LS.pode_solicitar_artilharia(op) && prox >= C.CUSTOS_ACAO.interceptar_caminhao;
+    c.reserva = c.cam && hpP < .55 ? C.CUSTOS_ACAO.suprimento_medico : 0;
   }
-  const pct = u.vida_atual / u.vida_maxima, truck = CM.ativo(u);
-  if (pct < 0.3 && truck && U.pode_pagar(u, 'suprimento_medico') && rand100() <= 60) return 'suprimento_medico';
-  const protegido = u.em_cobertura || u.cobertura_pendente;
+  return c;
+};
+
+const pontuar = (k, c) => {
+  const { u, op, d, ia, hpP, pts, tk, turno } = c, custo = custoDe(k, u), dmg = dmgEsp(k, u, op);
+  const atq = (extra = 0) => 12 + 1.5 * dmg - .5 * custo + extra;
+  let s;
+  if (k === 'rifle' || k === 'submetralhadora' || k === 'tanque_metralhadora' || k === 'solicitar_artilharia') s = atq();
+  else if (k === 'anti_tank') s = atq(tk ? 8 : 0);
+  else if (k === 'molotov') s = atq() - (U.tem_municao(u, 'anti_tank') && !u.arma_no_chao ? 8 : 0) - (tk ? 20 : 0);
+  else if (k === 'recolher_arma') s = !U.tem_municao(u, 'anti_tank') ? 3 : tk ? 36 : c.opTankProx ? 22 : 9;
+  else if (k.startsWith('chamar_blindado_')) s = (tk ? 34 : 22) + { leve: 0, medio: 6, pesado: 11 }[k.split('_').pop()] + (hpP < .4 ? 10 : 0) + (turno >= 3 ? 3 : -4);
+  else if (k === 'tanque_perfurante' || k === 'tanque_explosivo') s = atq(tk && k === 'tanque_perfurante' ? 8 : 0);
+  else if (k.startsWith('carregar_')) { const tc = tcfg(u); s = (k.slice(9) === (tk ? 'perfurante' : 'explosivo') ? 36 : 6) - tc.recarga_rodadas * 2 - (u.tanque_combustivel <= tc.recarga_rodadas ? 14 : 0); }
+  else if (k === 'reabastecer') s = u.tanque_combustivel <= 0 ? 52 : u.tanque_combustivel === 1 ? 10 : 2;
+  else if (k === 'sair_tanque') s = u.tanque_combustivel <= 0 && pts < tcfg(u).custo_reabastecer ? 32 : 4;
+  else if (k === 'aguardar') s = 9 + (!T.tanque_operacional(u) && u.tanque_combustivel > 0 ? 14 : 0);
+  else if (k === 'chamar_caminhao') s = (turno <= 2 ? 40 : 27) + (hpP < .5 ? 6 : 0) - (c.interceptavel ? 10 : 0);
+  else if (k === 'comprar_artilharia') s = 26 + (turno >= 2 ? 3 : 0);
+  else if (k === 'interceptar_caminhao') s = 38;
+  else if (k === 'comprar_antiaerea') s = 16 + (c.opAereoProx ? 14 : 0) + (c.mem.ar >= .15 ? 10 : 0) + (op.ataque_aereo ? 12 : 0);
+  else if (k === 'ataque_aereo_frente') s = atq(tk ? 8 : 0);
+  else if (k === 'ataque_aereo_antiaerea') s = u.interceptado ? 30 : 0;
+  else if (k === 'ataque_aereo_artilharia') s = LS.pode_solicitar_artilharia(op) ? 18 : 2;
+  else if (k === 'cobertura') s = 5 + (c.ameaca ? (d.planeja ? 34 : 24) : 0) + (hpP < .4 ? 10 : 0) + (tk && T.canhao_pronto(op) ? 8 : 0);
+  else if (k === 'pular_vez') s = 9 + (pts < 12 ? 16 : 0) + (pts >= 25 && pts < 45 ? 6 : 0);
+  else s = 0;
+
+  const sobra = pts - custo;
+  if (c.reserva && custo > 0 && sobra < c.reserva) s -= Math.min(14, (c.reserva - sobra) * .6);
+  if (d.finaliza && dmg > 0) {
+    const atras = k === 'solicitar_artilharia' || k === 'ataque_aereo_frente';
+    if (!tk && dmg >= c.opHp * .85) s += atras ? 27 : 45;
+    else if (tk && dmg >= c.opHp * .9) s += atras ? 8 : 14;
+  }
+  if (c.mem.cob >= .34 && k === 'molotov') s += 12;
+  if (c.mem.pass >= .5 && (CAT(k) === 'ataque' || CAT(k) === 'aereo')) s += 6;
+  if (c.mem.tank >= .3 && !tk && k === 'recolher_arma') s += 8;
+  if (c.opAereoProx && hpP < .35 && k.startsWith('chamar_blindado_')) s += 10;
+  const cb = d.combos && ia.combo && ia.combo.ate >= turno ? ia.combo.tipo : null;
+  if (cb === 'amaciar' && (k === 'ataque_aereo_frente' || k === 'submetralhadora' || k === 'tanque_explosivo')) s += 20;
+  if (cb === 'fogo' && (k === 'submetralhadora' || k === 'rifle')) s += 15;
+  if (d.combos && k === 'interceptar_caminhao') s += 12;
+  if (ia.blefe && (k === 'pular_vez' || k === 'aguardar')) s += 45;
+  if (ia.golpe === turno && custo >= 30) s += 22;
+  const m = (PERSONAS[ia.persona] || {})[CAT(k)];
+  if (s > 0 && m) s *= m;
+  return s;
+};
+
+const pontuarSup = (k, c) => {
+  const { u, hpP } = c, custo = custoDe(k, u);
+  if (k === 'suprimento_medico') { const falta = U.vida_maxima_principal(u) - U.vida_atual_principal(u); return Math.min(C.CURA_SUPRIMENTO, falta) * 1.7 - .4 * custo + (c.opAereoProx && hpP < .5 ? 8 : 0); }
+  if (k === 'reabastecer') return u.tanque_combustivel <= 0 ? 50 : -99;
+  if (u.tanque_ativo) return -99;
+  const f = c.tk ? .3 : 1;
+  if (k === 'suprimento_municao_rifle') return (!U.tem_municao(u, 'rifle') ? 30 : U.usos_restantes(u, 'rifle') <= 1 ? 10 : 0) * f - .4 * custo;
+  if (k === 'suprimento_municao_smg') return (!U.tem_municao(u, 'smg') ? 26 : U.usos_restantes(u, 'smg') <= 1 ? 6 : 0) * f - .4 * custo;
+  if (k === 'suprimento_municao_anti_tank') {
+    if (u.arma_no_chao) return -99;
+    return (!U.tem_municao(u, 'anti_tank') ? (c.tk || c.opTankProx || c.mem.tank >= .3 ? 42 : 8) : 0) - .4 * custo;
+  }
+  return -99;
+};
+
+const candidatos = (u, op, fase) => {
+  const ks = [];
+  if (fase === 'sup') {
+    ks.push('suprimento_medico', 'suprimento_municao_rifle', 'suprimento_municao_smg', 'suprimento_municao_anti_tank');
+    if (u.tanque_ativo) ks.push('reabastecer');
+  } else {
+    if (u.tanque_ativo) ks.push('tanque_metralhadora', 'tanque_perfurante', 'tanque_explosivo', 'carregar_perfurante', 'carregar_explosivo', 'reabastecer', 'sair_tanque', 'aguardar');
+    else {
+      ks.push('rifle', 'submetralhadora', 'anti_tank', 'molotov', 'recolher_arma', 'chamar_blindado_leve', 'chamar_blindado_medio', 'chamar_blindado_pesado', 'pular_vez');
+      if (!u.em_cobertura && !u.cobertura_pendente) ks.push('cobertura');
+    }
+    ks.push('chamar_caminhao', 'comprar_artilharia', 'comprar_antiaerea', 'solicitar_artilharia', 'interceptar_caminhao');
+    if (C.SUPORTE_AEREO_ATIVO) ks.push('ataque_aereo_frente', 'ataque_aereo_antiaerea', 'ataque_aereo_artilharia');
+  }
+  return ks.filter((k) => Tn.validar_acao(k, u, op) === null && (k !== 'interceptar_caminhao' || op.caminhao.chegada >= 2));
+};
+
+const sortear = (lista, temp) => {
+  const mx = Math.max(...lista.map((x) => x.s)), w = lista.map((x) => Math.exp((x.s - mx) / temp));
+  let r = Math.random() * w.reduce((a, b) => a + b, 0);
+  for (let i = 0; i < lista.length; i++) { r -= w[i]; if (r <= 0) return lista[i]; }
+  return lista[lista.length - 1];
+};
+
+B.atualizar = (u, op, turno, d) => {
+  const ia = u.ia || (u.ia = { persona: d.persona === 'sorteada' ? sorteia(SORTEAVEIS) : d.persona, desde: 1, blefe: 0, golpe: 0, combo: null });
+  const hpP = U.vida_atual_principal(u) / U.vida_maxima_principal(u);
+  if (d.muda && turno - ia.desde >= 3) {
+    let nova = null;
+    if (hpP < .4 && ia.persona !== 'defensivo') nova = 'defensivo';
+    else if (op.tanque_ativo && !u.tanque_ativo && ia.persona !== 'blindado' && ia.persona !== 'aereo') nova = sorteia(['blindado', 'aereo']);
+    else if (turno - ia.desde >= 5 && Math.random() < .25) nova = sorteia(SORTEAVEIS.filter((p) => p !== ia.persona));
+    if (nova) { ia.persona = nova; ia.desde = turno; }
+  }
+  ia.blefe = 0;
+  if (ia.golpe && turno > ia.golpe) ia.golpe = 0;
   const ameaca = LS.artilharia_a_caminho(op) || LS.aviao_chegando(op);
-  if (ameaca && !protegido && rand100() <= C.BOT_CHANCE_COBERTURA_ARTILHARIA) return 'cobertura';
-  const as = acaoSuporte(u, op, turno); if (as) return as;
-  if (op.tanque_ativo) {
-    // rifle/SMG/molotov quase nao machucam blindado: usar antitanque ou ter um blindado proprio
-    if (u.arma_no_chao) return 'recolher_arma';
-    if (U.pode_pagar(u, 'anti_tank') && U.tem_municao(u, 'anti_tank')) return 'anti_tank';
-    const k = melhorBlindado(u); if (k) return `chamar_blindado_${k}`;
-    if (truck && U.pode_pagar(u, 'suprimento_municao_anti_tank')) return 'suprimento_municao_anti_tank';
-    return B.escolher_pular_ou_cobertura(u, op);
-  }
-  const k = melhorBlindado(u);
-  if (k && turno >= 3 && rand100() <= (k === 'leve' ? 35 : 60)) return `chamar_blindado_${k}`;
-  const ctr = op.em_cobertura; // proximo dano do inimigo sera reduzido: nao gastar ataque forte
-  const rifleMax = u.lado_id === 1 ? 20 : 17, smgMed = u.lado_id === 1 ? 16 : 12;
-  if (op.molotov_restante === 0 && !ctr && op.vida_atual > 25 && u.pontos >= 25 && (u.arma_no_chao || !U.tem_municao(u, 'anti_tank')) && rand100() <= 40) return 'molotov';
-  const querSmg = !ctr && op.vida_atual > rifleMax * 0.6 && u.pontos >= 20 && U.tem_municao(u, 'smg') && U.pode_pagar(u, 'submetralhadora');
-  if (querSmg && op.vida_atual > smgMed * 0.5) return 'submetralhadora';
-  if (U.tem_municao(u, 'rifle') && U.pode_pagar(u, 'rifle')) return 'rifle';
-  if (U.tem_municao(u, 'smg') && U.pode_pagar(u, 'submetralhadora')) return 'submetralhadora';
-  if (truck && U.pode_pagar(u, 'suprimento_municao_rifle')) return 'suprimento_municao_rifle';
-  if (truck && U.pode_pagar(u, 'suprimento_municao_smg')) return 'suprimento_municao_smg';
-  if (u.arma_no_chao && U.tem_municao(u, 'anti_tank')) return 'recolher_arma';
-  return B.escolher_pular_ou_cobertura(u, op);
+  if (d.blefa && !ia.golpe && u.pontos >= 30 && hpP > .5 && !ameaca && Math.random() < .14) { ia.blefe = 1; ia.golpe = turno + 1; }
+  return ia;
 };
-B.escolher_acao_bot = (u, op, turno) => { const a = escolherBase(u, op, turno);
-  if (SUPR_CAMINHAO.has(a) && !CM.ativo(u)) { if (u.tanque_ativo) return 'aguardar';
-    if (!op.tanque_ativo && U.tem_municao(u, 'rifle') && U.pode_pagar(u, 'rifle')) return 'rifle'; return B.escolher_pular_ou_cobertura(u, op); }
-  return a; };
-B.suprimento_bot = (u) => {
-  if (U.vida_atual_principal(u) / U.vida_maxima_principal(u) < 0.5 && U.pode_pagar(u, 'suprimento_medico')) return 'suprimento_medico';
-  if (u.tanque_ativo) return null;
-  for (const [arma, ch] of [['rifle', 'suprimento_municao_rifle'], ['smg', 'suprimento_municao_smg'], ['anti_tank', 'suprimento_municao_anti_tank']])
-    if (!U.tem_municao(u, arma) && !(arma === 'anti_tank' && u.arma_no_chao) && U.pode_pagar(u, ch)) return ch;
-  return null;
+
+B.escolher = (u, op, turno, fase, d, ia) => {
+  const c = contexto(u, op, turno, ia, d);
+  let lista = candidatos(u, op, fase).map((k) => ({ k, s: fase === 'sup' ? pontuarSup(k, c) : pontuar(k, c) })).filter((x) => x.s > -50);
+  if (fase === 'sup') lista.push({ k: null, s: 18 });
+  else if (d.erro && Math.random() < d.erro) return sorteia(lista).k;
+  return sortear(lista, d.temp).k;
 };
+
 Tn.turno_bot = async (u, op, turno) => {
+  const d = DIF(), ia = B.atualizar(u, op, turno, d);
   say(`\n▶ ${u.nome}`); await espera(0.5);
-  if (CM.ativo(u)) for (let k = 0; k < 3; k++) { const s = B.suprimento_bot(u); if (!s) break; await Tn.executar_acao(s, u, op); }
-  const acao = B.escolher_acao_bot(u, op, turno);
+  if (CM.ativo(u)) for (let k = 0; k < 3; k++) { const s = B.escolher(u, op, turno, 'sup', d, ia); if (!s) break; await Tn.executar_acao(s, u, op); }
+  const acao = B.escolher(u, op, turno, 'main', d, ia);
+  if (d.combos) ia.combo = acao === 'solicitar_artilharia' ? { tipo: 'amaciar', ate: turno + 1 } : acao === 'molotov' ? { tipo: 'fogo', ate: turno + 1 } : (ia.combo && ia.combo.ate >= turno + 1 ? ia.combo : null);
   await Tn.executar_acao(acao, u, op);
 };
 
-// ---------- cobertura (QTE) ----------
 const acaoRapida = (a) => {
   if (a.tanque_ativo) { if (T.canhao_pronto(a) && U.pode_pagar(a, 'tanque_' + a.tanque_municao)) return 'tanque_' + a.tanque_municao; return (T.tanque_operacional(a) && U.pode_pagar(a, 'tanque_metralhadora')) ? 'tanque_metralhadora' : null; }
   return (U.tem_municao(a, 'rifle') && U.pode_pagar(a, 'rifle')) ? 'rifle' : null;
@@ -622,15 +706,15 @@ L.resolver_cobertura = async (at, alvo, ehHumano) => {
       say(`\n>>> ${alvo.nome} corre para a cobertura! Aperte ENTER em ${C.QTE_TEMPO_SEGUNDOS}s para atacar!`);
       reagiu = await HOOK.qte(C.QTE_TEMPO_SEGUNDOS, at, alvo);
       L.retomar_registro();
-    } else reagiu = rand100() <= C.QTE_CHANCE_BOT;
+    } else reagiu = rand100() <= DIF().qte;
   }
   if (reagiu) { say(`${at.nome} flagra ${alvo.nome} em campo aberto!`); await Tn.executar_acao(acao, at, alvo); }
   else { alvo.em_cobertura = true; say(`${alvo.nome} alcança a cobertura a tempo.`); await fx('cobertura_chega', { u: alvo }); await espera(1); }
 };
 
-// ---------- batalha ----------
 L.rodar_batalha = async (jogador, inimigo) => {
   let turno = 1;
+  inimigo.ajuste_pontos = DIF().pontos_rodada;
   const alemao = jogador.lado_id === 1 ? jogador : inimigo, sovietico = jogador.lado_id === 1 ? inimigo : jogador;
   for (;;) {
     if (turno > 1) {
@@ -653,7 +737,6 @@ L.rodar_batalha = async (jogador, inimigo) => {
       if (U.unidade_derrotada(op)) break;
     }
     for (const u of [alemao, sovietico]) { await L.aplica_efeito_incendiario(u); await L.aplica_molotov(u); }
-    HOOK.turnoFim(jogador, inimigo, turno);
     const fuga = jogador.fugiu || inimigo.fugiu;
     if (fuga || U.unidade_derrotada(jogador) || U.unidade_derrotada(inimigo)) { HOOK.status(jogador, inimigo, turno); return fuga ? 'fuga' : 'combate'; }
     turno += 1;
