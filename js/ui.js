@@ -29,8 +29,8 @@ const TV = {
   ovd_leve: { mount: [0.6392, 0.2294], gl: 0.1277, an: .02, mg: [.64, .275] }
 };
 const SQ = ['fuz_a', 'fuz_b', 'smg_a', 'smg_b', 'at'], IDLE = ['fuz_a', 'smg_a', 'fuz_b', 'at', 'smg_b'];
-const ORDEM = { rifle: ['fuz_a', 'fuz_b', 'smg_a', 'smg_b', 'at'], smg: ['smg_a', 'smg_b', 'fuz_a', 'fuz_b', 'at'], anti_tank: ['at', 'fuz_a', 'fuz_b', 'smg_a', 'smg_b'], molotov: ['at', 'fuz_a', 'fuz_b', 'smg_a', 'smg_b'] };
-const FRENTE = { rifle: ['fuz_a', 'fuz_b'], smg: ['smg_a', 'smg_b'], anti_tank: ['at'], molotov: ['at'] };
+const ORDEM = { rifle: ['fuz_a', 'fuz_b', 'smg_a', 'smg_b', 'at'], smg: ['smg_a', 'smg_b', 'fuz_a', 'fuz_b', 'at'], anti_tank: ['at', 'fuz_a', 'fuz_b', 'smg_a', 'smg_b'] };
+const FRENTE = { rifle: ['fuz_a', 'fuz_b'], smg: ['smg_a', 'smg_b'], anti_tank: ['at'] };
 const DX = 40;
 
 const GROUND = 555, WORLD_W = 2752, X = [480, 2272];
@@ -53,7 +53,6 @@ function drawSquad(u) {
   }).sort((a, b) => a.st.dy - b.st.dy);
   for (const { id, st } of L) {
     let fam = id, pose = front.includes(id) ? 99 : 0;
-    if (id === 'at') { if (act === 'molotov') { fam = 'molotov'; pose = 1; } else if (u.arma_no_chao) { fam = 'molotov'; pose = 0; } }
     const s = sprite(`${p}_${fam}`, pose); if (!s.img.naturalWidth) continue;
     const sc = SOLK * (1 - 0.14 * c) * (SOL_ESC[`${p}_${fam}`] || 1), w = s.img.naturalWidth * sc, h = s.img.naturalHeight * sc;
     g.save(); g.translate(x - toEnemy * st.dx, y + st.dy); if (s.facing !== want) g.scale(-1, 1);
@@ -64,8 +63,8 @@ function drawSquad(u) {
     g.restore();
   }
   const cx = x - toEnemy * DX * 2 * (1 - 0.3 * c);
-  if (u.em_cobertura || u.cobertura_pendente) { g.fillStyle = '#8fd'; g.font = '16px sans-serif'; g.textAlign = 'center'; g.fillText(u.em_cobertura ? '🛡 cobertura' : '↯ correndo', cx, y - SOL_H - 14 - ANT_H); }
-  if (u.molotov_restante > 0 || u.efeito_incendiario_restante > 0) for (let i = 0; i < 2; i++) boom(cx + (Math.random() - .5) * 150, y - Math.random() * SOL_H * .8, 1, ['#ff8a1f', '#ffd23f', '#d6370f'], 1.6);
+  if (u.em_cobertura || u.cobertura_pendente) { g.fillStyle = '#8fd'; g.font = '16px sans-serif'; g.textAlign = 'center'; g.fillText(u.em_cobertura ? '🛡 cover' : '↯ running', cx, y - SOL_H - 14 - ANT_H); }
+  if (u.efeito_incendiario_restante > 0) for (let i = 0; i < 2; i++) boom(cx + (Math.random() - .5) * 150, y - Math.random() * SOL_H * .8, 1, ['#ff8a1f', '#ffd23f', '#d6370f'], 1.6);
 }
 function drawUnit(u) {
   { const a = cxAlvo(u), d = a - (u._cx || 0); u._cx = Math.abs(d) < .5 ? a : (u._cx || 0) + d * .08; }
@@ -85,7 +84,7 @@ function drawUnit(u) {
     if (V.mg) u._mg = { x: x + flip * (-w / 2 + V.mg[0] * w), y: y - h + V.mg[1] * h };
   }
   g.save(); if (flip < 0) g.scale(-1, 1); g.drawImage(b.img, -w / 2, -h, w, h); g.restore(); g.restore();
-  if (u.molotov_restante > 0 || u.efeito_incendiario_restante > 0) for (let i = 0; i < 2; i++) boom(x + (Math.random() - .5) * w * .6, y - Math.random() * h * .8, 1, ['#ff8a1f', '#ffd23f', '#d6370f'], 1.6);
+  if (u.efeito_incendiario_restante > 0) for (let i = 0; i < 2; i++) boom(x + (Math.random() - .5) * w * .6, y - Math.random() * h * .8, 1, ['#ff8a1f', '#ffd23f', '#d6370f'], 1.6);
 }
 function boom(x, y, n, cols, spd = 4) { for (let i = 0; i < n; i++) parts.push({ x, y, vx: (Math.random() - .5) * spd * 2, vy: (Math.random() - .8) * spd, life: 25 + Math.random() * 20, c: cols[Math.floor(Math.random() * cols.length)], s: 3 + Math.random() * 5 }); }
 
@@ -472,23 +471,21 @@ function hud() {
   [player, enemy].forEach((u, k) => {
     if (!u) return;
     const meu = k === 0, lado = u.lado_id === 1 ? 'otan' : 'ovd', pc = pct(u.vida_atual, u.vida_maxima), ex = [];
-    let h = `<img class="flag" src="assets/cenas/flag_${lado}.png" alt="${lado.toUpperCase()}" onerror="var e=this.dataset.e|0,x=['.png','.jpg','.webp','.jpeg'];if(e<3){this.dataset.e=e+1;this.src='assets/cenas/flag_${lado}'+x[e+1]}else this.style.display='none'">`;
+    let h = `<img class="flag" src="assets/cenas/flag_${lado}.png" alt="${u.nome}" onerror="var e=this.dataset.e|0,x=['.png','.jpg','.webp','.jpeg'];if(e<3){this.dataset.e=e+1;this.src='assets/cenas/flag_${lado}'+x[e+1]}else this.style.display='none'">`;
     let tk = '<div class="bico"></div><div class="vbar none"></div><small>&nbsp;</small>';
     if (u.tanque_ativo) {
       const tc = C.TANQUES[u.lado_id][u.tanque_classe], tp = pct(u.tanque_vida, tc.vida);
       tk = `<div class="bico"><img src="assets/ui/${TANK_IMG[u.tanque_classe]}.png" title="${esc(U.nome_tanque(u.lado_id, u.tanque_classe))}"></div><div class="vbar t"><i style="height:${tp}%;background:hsl(${Math.round(tp * 1.2)},65%,45%)"></i></div><small>${Math.max(0, u.tanque_vida)}</small>`;
-      ex.push(u.tanque_municao ? `<span class="chip" title="Canhão">${u.tanque_municao === 'perfurante' ? '🔩 AP' : '💣 HE'} ${u.tanque_recarga > 0 ? '⏳' + u.tanque_recarga : '✔'}</span>` : '<span class="chip off" title="Canhão vazio">🚫</span>');
+      ex.push(u.tanque_municao ? `<span class="chip" title="Cannon">${u.tanque_municao === 'perfurante' ? '🔩 AP' : '💣 HE'} ${u.tanque_recarga > 0 ? '⏳' + u.tanque_recarga : '✔'}</span>` : '<span class="chip off" title="Cannon empty">🚫</span>');
     }
     h += `<div class="bars"><div class="bcol"><div class="bico">${heartSvg}</div><div class="vbar"><i style="height:${pc}%;background:hsl(${Math.round(pc * 1.2)},65%,45%)"></i></div><small>${Math.max(0, u.vida_atual)}</small></div><div class="bcol">${tk}</div></div>`;
-    h += `<div class="pts" title="Pontos">🪙 ${u.pontos}</div>`;
+    h += `<div class="pts" title="Points">🪙 ${u.pontos}</div>`;
     const art = LS.tem(u, 'artilharia'), aa = LS.tem(u, 'antiaerea'), ca = C.LINHA_SUPORTE.artilharia.custo_compra, ci = C.LINHA_SUPORTE.antiaerea.custo_compra;
-    h += `<div class="sup">${slot('<img src="assets/ui/artilharia.png">', art, art ? 'Artilharia' : `Comprar artilharia (${ca} pts)`, meu && !art && canBuy('comprar_artilharia') ? 'comprar_artilharia' : '', ca, 'Artilharia')}${slot('<img src="assets/ui/antiaerea.png">', aa, aa ? 'Antiaérea' : `Comprar antiaérea (${ci} pts)`, meu && !aa && canBuy('comprar_antiaerea') ? 'comprar_antiaerea' : '', ci, 'Antiaérea')}</div>`;
+    h += `<div class="sup">${slot('<img src="assets/ui/artilharia.png">', art, art ? 'Artillery' : `Buy artillery (${ca} pts)`, meu && !art && canBuy('comprar_artilharia') ? 'comprar_artilharia' : '', ca, 'Artillery')}${slot('<img src="assets/ui/antiaerea.png">', aa, aa ? 'Anti-aircraft' : `Buy anti-aircraft (${ci} pts)`, meu && !aa && canBuy('comprar_antiaerea') ? 'comprar_antiaerea' : '', ci, 'Anti-air')}</div>`;
     const cm = u.caminhao;
-    h += cm ? `<div class="cam on">🚛 ${cm.estado === 'ativo' ? `Caminhão ativo<em class="mini w"><i style="width:${pct(cm.vida, C.CAMINHAO.vida)}%"></i></em>` : `Caminhão a caminho<br>${cm.chegada} round${cm.chegada === 1 ? '' : 's'} para a chegada`}</div>`
-      : `<div class="cam${meu && canBuy('chamar_caminhao') ? ' buy' : ''}"${meu && canBuy('chamar_caminhao') ? ' data-buy="chamar_caminhao"' : ''} title="Chamar caminhão">🚛<small>${meu ? 'Chamar' : ''}</small></div>`;
-    if (C.SUPORTE_AEREO_ATIVO) ex.push(`<span class="chip${LS.aviao_disponivel(u) ? '' : ' off'}" title="Suporte aéreo">✈️${LS.aviao_a_caminho(u) ? '➜' : ''}</span>`);
-    if (u.molotov_restante > 0) ex.push(`<span class="chip hot" title="Em chamas">🔥${u.molotov_restante}</span>`);
-    if (u.arma_no_chao) ex.push('<span class="chip hot" title="Arma AT no chão">🚀⬇</span>');
+    h += cm ? `<div class="cam on">🚛 ${cm.estado === 'ativo' ? `Truck active<em class="mini w"><i style="width:${pct(cm.vida, C.CAMINHAO.vida)}%"></i></em>` : `Truck on its way<br>arrives in ${cm.chegada} round${cm.chegada === 1 ? '' : 's'}`}</div>`
+      : `<div class="cam${meu && canBuy('chamar_caminhao') ? ' buy' : ''}"${meu && canBuy('chamar_caminhao') ? ' data-buy="chamar_caminhao"' : ''} title="Call truck">🚛<small>${meu ? 'Call' : ''}</small></div>`;
+    if (C.SUPORTE_AEREO_ATIVO) ex.push(`<span class="chip${LS.aviao_disponivel(u) ? '' : ' off'}" title="Air support">✈️${LS.aviao_a_caminho(u) ? '➜' : ''}</span>`);
     h += `<div class="chips">${ex.join('')}</div>`;
     if (h !== hcache[k]) { hcache[k] = h; $('#h' + k).innerHTML = h; }
   });
@@ -510,8 +507,8 @@ const addLog = (t, cls = '') => { for (const l of String(t).split('\n')) if (l.t
 HOOK.say = (t) => addLog(t);
 HOOK.wait = (s) => sleep(fast ? 0 : s * 650);
 HOOK.limparTela = () => { logEl.innerHTML = ''; };
-HOOK.resumo = (n, ls) => { addLog(`--- O que aconteceu na rodada ${n} ---`, 'h'); ls.forEach(l => addLog(l)); addLog('-'.repeat(30), 'h'); };
-HOOK.status = (j, i, t) => { $('#turno').textContent = 'Turno ' + t; };
+HOOK.resumo = (n, ls) => { addLog(`--- What happened in turn ${n} ---`, 'h'); ls.forEach(l => addLog(l)); addLog('-'.repeat(30), 'h'); };
+HOOK.status = (j, i, t) => { $('#turno').textContent = 'Turn ' + t; };
 const pop = (u, t, c) => { const p = pos(u); floats.push({ x: p.x, y: p.y - (u.tanque_ativo ? 230 : SOL_H + 45), t, c, life: 60 }); };
 const setPose = (u, k, ms = 700) => { u._pose = k; setTimeout(() => { if (u._pose === k) u._pose = null; }, ms); };
 const flashes = [];
@@ -670,7 +667,7 @@ async function antiTanque(a, d) {
 }
 const muzzle = (a, d, mg) => { const A = pos(a), D = pos(d), dir = D.x > A.x ? 1 : -1, m = a.tanque_ativo ? (mg && a._mg ? a._mg : a._muz) : null; for (let i = 0; i < 6; i++) parts.push({ x: m ? m.x : A.x + dir * 45, y: m ? m.y : A.y - 60, vx: dir * (14 + i * 2), vy: (Math.random() - .5) * 1.2, life: 28, c: '#ffe27a', s: 4 }); };
 HOOK.fx = async (n, d) => {
-  if (d && d.at && ['tiro', 'rajada', 'tiro_tanque', 'molotov'].includes(n)) await pan(d.at); else if (d && d.u && ['dano', 'tanque_destruido'].includes(n)) await pan(d.u);
+  if (d && d.at && ['tiro', 'rajada', 'tiro_tanque'].includes(n)) await pan(d.at); else if (d && d.u && ['dano', 'tanque_destruido'].includes(n)) await pan(d.u);
   if (n === 'rajada' && d.arma === 'tanque_mg') await tankMG(d.at, d.def);
   else if ((n === 'tiro' || n === 'rajada') && d.arma === 'rifle' && FUZIL[d.at.lado_id] && !d.at.tanque_ativo && !fast) { setPose(d.at, d.arma, FUZIL[d.at.lado_id].dur); await fuzilInf(d.at, d.def); }
   else if ((n === 'tiro' || n === 'rajada') && d.arma === 'smg' && d.at.lado_id === 2 && !d.at.tanque_ativo && !fast) { setPose(d.at, d.arma, SMG_OVD.espera + SMG_OVD.dur + 100); await smgOvd(d.at, d.def); }
@@ -678,50 +675,82 @@ HOOK.fx = async (n, d) => {
   else if ((n === 'tiro' || n === 'rajada') && d.arma === 'anti_tank' && !d.at.tanque_ativo && !fast) { setPose(d.at, d.arma, AT_FX.pose); await antiTanque(d.at, d.def); }
   else if (n === 'tiro' || n === 'rajada') { setPose(d.at, d.arma); muzzle(d.at, d.def, d.arma === 'tanque_mg'); await sleep(fast ? 0 : 250); }
   else if (n === 'tiro_tanque') { tankBlast(d.at, d.def); await sleep(fast ? 0 : 320); }
-  else if (n === 'molotov') { setPose(d.at, 'molotov'); await sleep(fast ? 0 : 400); }
   else if (n === 'dano') { const p = pos(d.u); d.u._flash = Date.now() + 350; pop(d.u, '-' + d.dano, '#ff5a4d'); boom(p.x, p.y - (d.u.tanque_ativo ? 120 : 55), 8, ['#ff9d4d', '#ffd23f', '#999']); }
   else if (n === 'tanque_destruido') { const p = pos(d.u); boom(p.x, p.y - 100, 60, ['#ff8a1f', '#ffd23f', '#333', '#d6370f'], 7); }
   else if (n === 'suprimento') pop(d.u, '+', '#6f6');
 };
-HOOK.qte = (sec, at, alvo) => new Promise(res => {
-  const el = $('#qte'); el.style.display = 'flex'; let done = false;
-  const fim = (v) => { if (done) return; done = true; el.style.display = 'none'; removeEventListener('keydown', kd); $('#qb').onclick = null; res(v); };
-  const kd = (e) => { if (e.key === 'Enter' || e.key === ' ') fim(true); };
-  addEventListener('keydown', kd); $('#qb').onclick = () => fim(true); setTimeout(() => fim(false), sec * 1000);
+const MIRA_NOMES = { rifle: 'RIFLE', smg: 'SMG', anti_tank: 'ANTI-TANK', tanque_mg: 'MACHINE GUN', canhao: 'CANNON', submetralhadora: 'SMG', tanque_metralhadora: 'MACHINE GUN', tanque_perfurante: 'CANNON', tanque_explosivo: 'CANNON' };
+const CROSS = (c, w) => `<svg viewBox="-30 -30 60 60"><g fill="none"><g stroke="${c === '#000' ? '#fff' : '#400'}" stroke-width="${w + 2}" opacity=".55"><circle r="18"/><path d="M-30 0H-6M6 0H30M0-30V-6M0 6V30"/></g><g stroke="${c}" stroke-width="${w}"><circle r="18"/><path d="M-30 0H-6M6 0H30M0-30V-6M0 6V30"/></g></g></svg>`;
+HOOK.mira = (info) => new Promise(res => {
+  const C_ = C.MIRA, el = $('#mira'), prep = info.prep && !fast ? C_.preparo : 0, janela = C_.janela;
+  const nome = MIRA_NOMES[info.arma] || 'ATTACK';
+  el.innerHTML = `<div id="mp"><div id="mh"><b>${info.reacao ? 'REACT!' : 'AIM'}</b><span>${nome}</span></div><div id="mf"><div class="grid"></div><div id="mc">${prep ? '<em>GET READY</em>' : ''}</div><div id="mr">${CROSS('#ff2a2a', 1.6)}</div><div id="mm">${CROSS('#000', 1.6)}</div><div id="mx"></div></div><div id="mt"><i></i></div></div>`;
+  el.style.display = 'flex';
+  const f = $('#mf'), mr = $('#mr'), mm = $('#mm'), mt = $('#mt i'), mx = $('#mx'), mc = $('#mc');
+  let fase = prep ? 0 : 1, fim = false, t0 = 0, rx = 0, ry = 0, timer = null;
+  mm.style.left = '50%'; mm.style.top = '50%';
+  const rect = () => f.getBoundingClientRect();
+  const move = (e) => { const r = rect(); mm.style.left = (e.clientX - r.left) + 'px'; mm.style.top = (e.clientY - r.top) + 'px'; };
+  const fecha = (p, label) => {
+    if (fim) return; fim = true; clearTimeout(timer); cancelAnimationFrame(raf); f.onmousemove = null; f.onmousedown = null;
+    mx.textContent = label + (p > 0 ? ' ' + Math.round(p * 100) + '%' : ''); mx.className = p >= .95 ? 'ok' : p >= .5 ? 'mid' : 'bad'; mx.style.display = 'block';
+    mr.style.display = 'block'; mr.style.left = rx + 'px'; mr.style.top = ry + 'px';
+    setTimeout(() => { el.style.display = 'none'; el.innerHTML = ''; res(p); }, fast ? 150 : 700);
+  };
+  let raf = 0;
+  const inicio = () => {
+    fase = 1; mc.style.display = 'none'; const r = rect(), m = 46;
+    rx = m + Math.random() * (r.width - 2 * m); ry = m + Math.random() * (r.height - 2 * m);
+    mr.style.left = rx + 'px'; mr.style.top = ry + 'px'; mr.style.display = 'block'; t0 = performance.now();
+    const tick = () => { const q = (performance.now() - t0) / (janela * 1000); mt.style.width = Math.max(0, (1 - q) * 100) + '%'; if (q < 1 && !fim) raf = requestAnimationFrame(tick); }; tick();
+    timer = setTimeout(() => fecha(0, 'MISSED'), janela * 1000);
+  };
+  f.onmousemove = move;
+  f.onmousedown = (e) => {
+    if (fase !== 1 || fim) return; move(e);
+    const r = rect(), d = Math.hypot(e.clientX - r.left - rx, e.clientY - r.top - ry) / r.width, tol = C_.tolerancia_perfeita, z = C_.raio_zero;
+    const p = d <= tol ? 1 : Math.max(0, 1 - (d - tol) / (z - tol));
+    fecha(p, p >= .95 ? 'PERFECT' : p >= .6 ? 'GOOD' : p > 0 ? 'WEAK' : 'MISSED');
+  };
+  mr.style.display = 'none'; mt.style.width = '100%';
+  if (!prep) inicio();
+  else {
+    timer = setTimeout(inicio, prep * 1000);
+  }
 });
 
 const box = $('#acoes');
-const ACT = { rifle: ['🎯', 'Atacar com fuzil'], submetralhadora: ['🔫', 'Atacar com submetralhadora'], anti_tank: ['🚀', 'Atacar com anti tanque'], molotov: ['🔥', 'Atacar com molotov'], recolher_arma: ['🤲', 'Recolher AT'],
-  chamar_blindado: ['🛡️', 'Blindado'], chamar_caminhao: ['🚛', 'Caminhão'], caminhao_suprimento: ['📦', 'Suprimentos'], comprar_artilharia: ['💣', 'Comprar art.'], solicitar_artilharia: ['💣', 'Artilharia'],
-  comprar_antiaerea: ['🛰️', 'Antiaérea'], suporte_aereo: ['✈️', 'Aéreo'], cobertura: ['🧱', 'Cobertura'], aguardar: ['⏳', 'Aguardar'], pular_vez: ['⏭️', 'Pular'], fugir: ['🏃', 'Fugir'],
-  tanque_metralhadora: ['🔫', 'Metralhadora'], tanque_perfurante: ['🔩', 'Atirar AP'], tanque_explosivo: ['💣', 'Atirar HE'], carregar_perfurante: ['🔩', 'Carregar AP'], carregar_explosivo: ['💣', 'Carregar HE'],
-  reabastecer: ['⛽', 'Combustível'], sair_tanque: ['🚪', 'Sair'], suprimento_medico: ['➕', 'Médico'], interceptar_caminhao: ['🎯', 'Interceptar'] };
+const ACT = { rifle: ['🎯', 'Attack with rifle'], submetralhadora: ['🔫', 'Attack with SMG'], anti_tank: ['🚀', 'Attack with anti-tank'],
+  chamar_blindado: ['🛡️', 'Armor'], chamar_caminhao: ['🚛', 'Truck'], caminhao_suprimento: ['📦', 'Supplies'], comprar_artilharia: ['💣', 'Buy art.'], solicitar_artilharia: ['💣', 'Artillery'],
+  comprar_antiaerea: ['🛰️', 'Anti-air'], suporte_aereo: ['✈️', 'Air'], cobertura: ['🧱', 'Cover'], aguardar: ['⏳', 'Wait'], pular_vez: ['⏭️', 'Skip'], fugir: ['🏃', 'Flee'],
+  tanque_metralhadora: ['🔫', 'Machine gun'], tanque_perfurante: ['🔩', 'Fire AP'], tanque_explosivo: ['💣', 'Fire HE'], carregar_perfurante: ['🔩', 'Load AP'], carregar_explosivo: ['💣', 'Load HE'],
+  reabastecer: ['⛽', 'Fuel'], sair_tanque: ['🚪', 'Exit'], suprimento_medico: ['➕', 'Medical'], interceptar_caminhao: ['🎯', 'Intercept'] };
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const acIco = (c) => (ACT[c] || [])[0] || (/^chamar_blindado_/.test(c) ? '🛡️' : /^ataque_aereo/.test(c) ? '✈️' : /^suprimento_municao/.test(c) ? '🔸' : '▪️');
-const acRot = (it) => { const c = it.chave || '', t = it.texto; if (ACT[c]) return ACT[c][1]; if (c === 'ataque_aereo_frente') return 'Frente'; if (/^ataque_aereo_/.test(c)) { const m = t.match(/: ([^(]+?) \(/); return m ? m[1] : 'Suporte'; } if (/^suprimento_municao_/.test(c)) return 'Munição ' + (c.endsWith('rifle') ? 'fuzil' : c.endsWith('smg') ? 'SMG' : 'AT'); return t.replace(/\s*[(—:].*$/, ''); };
+const acRot = (it) => { const c = it.chave || '', t = it.texto; if (ACT[c]) return ACT[c][1]; if (c === 'ataque_aereo_frente') return 'Front'; if (/^ataque_aereo_/.test(c)) { const m = t.match(/: ([^(]+?) \(/); return m ? m[1] : 'Support'; } if (/^suprimento_municao_/.test(c)) return (c.endsWith('rifle') ? 'Rifle' : c.endsWith('smg') ? 'SMG' : 'AT') + ' ammo'; return t.replace(/\s*[(—:].*$/, ''); };
 function acBadges(it) {
   const t = it.texto, b = []; let m;
   if (it.chave === 'pular_vez' && (m = t.match(/\+(\d+)/))) b.push(`<span class="bd gain">+${m[1]} pts</span>`);
-  else if ((m = t.match(/(\d+) pts/)) || (m = t.match(/custo (\d+)/))) b.push(`<span class="bd">${m[1]} pts</span>`);
-  else if (/grátis/.test(t)) b.push('<span class="bd gain">grátis</span>');
+  else if ((m = t.match(/(\d+) pts/)) || (m = t.match(/cost (\d+)/))) b.push(`<span class="bd">${m[1]} pts</span>`);
+  else if (/free/.test(t)) b.push('<span class="bd gain">free</span>');
   if ((m = t.match(/\((\d+)x/))) b.push(`<span class="bd">×${m[1]}</span>`);
-  if (/^chamar_blindado_/.test(it.chave) && (m = t.match(/vida (\d+)/))) b.push(`<span class="bd">vida ${m[1]}</span>`);
-  if ((m = t.match(/chega em (\d+)/))) b.push(`<span class="bd">${m[1]} rounds</span>`);
-  if (/^carregar_/.test(it.chave) && (m = t.match(/recarga (\d+)/))) b.push(`<span class="bd">recarga ${m[1]}</span>`);
-  if (it.chave === 'caminhao_suprimento' && (m = t.match(/caminhão (\d+)\//))) b.push(`<span class="bd">caminhão ${m[1]}</span>`);
+  if (/^chamar_blindado_/.test(it.chave) && (m = t.match(/HP (\d+)/))) b.push(`<span class="bd">HP ${m[1]}</span>`);
+  if ((m = t.match(/arrives in (\d+)/))) b.push(`<span class="bd">${m[1]} rounds</span>`);
+  if (/^carregar_/.test(it.chave) && (m = t.match(/reload (\d+)/))) b.push(`<span class="bd">reload ${m[1]}</span>`);
+  if (it.chave === 'caminhao_suprimento' && (m = t.match(/truck (\d+)\//))) b.push(`<span class="bd">truck ${m[1]}</span>`);
   return b.join('');
 }
 function acInfo(t) {
   let m;
-  if ((m = t.match(/^(.+?) sem munição/))) return ['', m[1].replace(/^Submetralhadora$/, 'SMG') + ' sem munição'];
-  if (/sem combustível/.test(t)) return ['', 'Sem combustível'];
-  if (/recarregando/.test(t)) return ['', 'Canhão recarregando ' + ((t.match(/\((\d+)/) || [])[1] || '')];
-  if (/em recarga/.test(t)) return ['', t.replace(/ em recarga.*$/, '').replace(/^Artilharia .*/, 'Artilharia') + ' em recarga'];
-  if (/a caminho/.test(t)) return ['', (/Caminhão/.test(t) ? 'Caminhão' : 'Aéreo') + ' a caminho'];
-  if (/indispon/.test(t)) return ['', 'Tanque indisponível'];
+  if ((m = t.match(/^(.+?) out of ammo/))) return ['', m[1].replace(/^Submachine gun$/, 'SMG') + ' out of ammo'];
+  if (/out of fuel/.test(t)) return ['', 'Out of fuel'];
+  if (/reloading/.test(t)) return ['', 'Cannon reloading ' + ((t.match(/\((\d+)/) || [])[1] || '')];
+  if (/on cooldown/.test(t)) return ['', t.replace(/ on cooldown.*$/, '').replace(/^Artillery .*/, 'Artillery') + ' on cooldown'];
+  if (/on its way/.test(t)) return ['', (/^Truck/.test(t) ? 'Truck' : 'Air') + ' on its way'];
+  if (/unavailable/.test(t)) return ['', 'Tank unavailable'];
   return ['', t];
 }
-const SIDE = ['comprar_artilharia', 'comprar_antiaerea', 'chamar_caminhao'], ATK = ['rifle', 'submetralhadora', 'anti_tank', 'molotov'];
+const SIDE = ['comprar_artilharia', 'comprar_antiaerea', 'chamar_caminhao'], ATK = ['rifle', 'submetralhadora', 'anti_tank'];
 const pick = (items, back) => new Promise(res => {
   box.innerHTML = '';
   const keys = {}, fim = (v) => { removeEventListener('keydown', kd); pend = null; pendFim = null; res(v); }, kd = (e) => { if (keys[e.key]) fim(keys[e.key]); };
@@ -734,7 +763,7 @@ const pick = (items, back) => new Promise(res => {
     b.innerHTML = `${num ? `<span class="ck">${num}</span>` : ''}<span class="cl">${esc(acRot(it))}</span><span class="cb">${acBadges(it)}</span>`;
     b.onclick = () => fim(it); box.appendChild(b); if (num) keys[String(num)] = it;
   }
-  if (back) { const b = document.createElement('button'); b.className = 'card x'; b.innerHTML = '<span class="cl">Voltar</span>'; b.onclick = () => fim({ chave: null }); box.appendChild(b); keys.Escape = { chave: null }; }
+  if (back) { const b = document.createElement('button'); b.className = 'card x'; b.innerHTML = '<span class="cl">Back</span>'; b.onclick = () => fim({ chave: null }); box.appendChild(b); keys.Escape = { chave: null }; }
   else { pend = items; pendFim = fim; }
   addEventListener('keydown', kd);
 });
@@ -820,16 +849,16 @@ const menu = $('#menu');
 const click = (sel) => new Promise(r => { $(sel).onclick = () => r(); });
 const D = C.DADOS_LADOS;
 function comparativo() {
-  const rows = [['Vida inicial', 'vida_maxima'], ['Rifle', 'rifle_nome'], ['Submetralhadora', 'submetralhadora_nome'], ['Arma antitanque', 'arma_anti_tank_nome'], ['Suprimento', 'caminhao_nome'], ['Suporte aéreo', 'suporte_nome']];
+  const rows = [['Starting HP', 'vida_maxima'], ['Rifle', 'rifle_nome'], ['Submachine gun', 'submetralhadora_nome'], ['Anti-tank weapon', 'arma_anti_tank_nome'], ['Supply', 'caminhao_nome'], ['Air support', 'suporte_nome']];
   let t = `<table><tr><th></th><th>${D[1].nome}<br><small>${D[1].nome_completo}</small></th><th>${D[2].nome}<br><small>${D[2].nome_completo}</small></th></tr>`;
   for (const [r, k] of rows) t += `<tr><td>${r}</td><td>${D[1][k]}</td><td>${D[2][k]}</td></tr>`;
-  t += `<tr><td>Buff especial</td><td>Nenhum</td><td>${D[2].buff_defesa * 100}% de chance de reduzir o dano recebido pela metade</td></tr>`;
-  for (const k of ['leve', 'medio', 'pesado']) { const a = C.TANQUES[1][k], b = C.TANQUES[2][k]; t += `<tr><td>Blindado ${k}</td><td>${a.nome} (vida ${a.vida}, ${a.custo_chamar} pts)</td><td>${b.nome} (vida ${b.vida}, ${b.custo_chamar} pts)</td></tr>`; }
+  t += `<tr><td>Special buff</td><td>None</td><td>${D[2].buff_defesa * 100}% chance to halve damage taken</td></tr>`;
+  for (const k of ['leve', 'medio', 'pesado']) { const a = C.TANQUES[1][k], b = C.TANQUES[2][k]; t += `<tr><td>Armor ${{ leve: 'light', medio: 'medium', pesado: 'heavy' }[k]}</td><td>${a.nome} (HP ${a.vida}, ${a.custo_chamar} pts)</td><td>${b.nome} (HP ${b.vida}, ${b.custo_chamar} pts)</td></tr>`; }
   return t + '</table>';
 }
 function custos() {
   const c = C.CUSTOS_ACAO;
-  return `<div class="dim" style="max-width:900px;font-size:13px">Custos (iguais para os dois lados): rifle ${c.rifle} · SMG ${c.submetralhadora} · antitanque ${c.anti_tank} · molotov ${c.molotov} (${C.MOLOTOV.dano[0]}–${C.MOLOTOV.dano[1]} de dano por ${C.MOLOTOV.rodadas} rodadas) · suporte aéreo ${c.suporte_aereo} · caminhão médico ${c.suprimento_medico} · artilharia ${C.LINHA_SUPORTE.artilharia.custo_compra} (+${C.LINHA_SUPORTE.artilharia.custo_uso} por uso) · antiaérea ${C.LINHA_SUPORTE.antiaerea.custo_compra} · pular a vez: +${C.BONUS_PULAR_VEZ} pts · cobertura: grátis, reduz o próximo dano em 40–70%. Munição: rifle ${U.usos_maximos('rifle')} usos, SMG ${U.usos_maximos('smg')}, antitanque ${U.usos_maximos('anti_tank')}.</div>`;
+  return `<div class="dim" style="max-width:900px;font-size:13px">Costs (same for both sides): rifle ${c.rifle} · SMG ${c.submetralhadora} · anti-tank ${c.anti_tank} · air support ${c.suporte_aereo} · medical truck ${c.suprimento_medico} · artillery ${C.LINHA_SUPORTE.artilharia.custo_compra} (+${C.LINHA_SUPORTE.artilharia.custo_uso} per use) · anti-aircraft ${C.LINHA_SUPORTE.antiaerea.custo_compra} · skip turn: +${C.BONUS_PULAR_VEZ} pts · cover: free, reduces the next damage by 40–70%. Ammo: rifle ${U.usos_maximos('rifle')} uses, SMG ${U.usos_maximos('smg', 1)} (Warsaw Pact ${U.usos_maximos('smg', 2)}), anti-tank ${U.usos_maximos('anti_tank')}.</div>`;
 }
 
 let _amb = null;
@@ -869,13 +898,13 @@ async function cenaFinal(v, motivo) {
     const st = document.createElement('style'); st.textContent = CSS_FIM; document.head.appendChild(st);
     const el = document.createElement('div'); el.id = 'fim';
     const lin = (rot, k) => `<tr><td>${rot}</td>${[1, 2].map(l => `<td class="n${l === lv ? ' win' : ''}">${ESTAT[l][k]}</td>`).join('')}</tr>`;
-    el.innerHTML = `<div class="cont"><div class="topo"><img src="${BANDEIRA_FIM[lv]}" alt="${nome(lv)}"><div><h1>VITÓRIA DA ${nome(lv)}</h1><div class="sub">${D[lv].nome_completo || ''}${motivo === 'fuga' ? ' · por fuga do adversário' : ''}</div></div></div>`
-      + `<table><tr><th>ESTATÍSTICAS</th><th>${nome(1)}</th><th>${nome(2)}</th></tr>${lin('Dano causado', 'causado')}${lin('Dano recebido', 'recebido')}</table>`
-      + `<button onclick="location.reload()">Jogar de novo</button></div><div class="scan"></div><div class="vig"></div>`;
+    el.innerHTML = `<div class="cont"><div class="topo"><img src="${BANDEIRA_FIM[lv]}" alt="${nome(lv)}"><div><h1>${nome(lv).toUpperCase()} VICTORY</h1><div class="sub">${D[lv].nome_completo || ''}${motivo === 'fuga' ? ' · opponent retreated' : ''}</div></div></div>`
+      + `<table><tr><th>STATISTICS</th><th>${nome(1)}</th><th>${nome(2)}</th></tr>${lin('Damage dealt', 'causado')}${lin('Damage taken', 'recebido')}</table>`
+      + `<button onclick="location.reload()">Play again</button></div><div class="scan"></div><div class="vig"></div>`;
     document.body.appendChild(el);
     const DUR = 10000, t0 = performance.now();
     let som = null, vAlvo = (VOL_FIM[lv] ?? 5) / 10;
-    try { som = new Audio(SOM_FIM[lv]); som.volume = 0; som.onerror = () => console.warn('[áudio] não carregou:', SOM_FIM[lv]); som.play().catch(() => { }); } catch (e) { som = null; }
+    try { som = new Audio(SOM_FIM[lv]); som.volume = 0; som.onerror = () => console.warn('[audio] failed to load:', SOM_FIM[lv]); som.play().catch(() => { }); } catch (e) { som = null; }
     const amb = _amb, a0 = amb ? amb.volume : 0;
     await new Promise(res => { const f = () => { const u = Math.min(1, (performance.now() - t0) / DUR); el.style.opacity = u; if (som) som.volume = vAlvo * u; if (amb) amb.volume = a0 * (1 - u); if (u < 1) requestAnimationFrame(f); else res(); }; f(); });
     if (amb) amb.pause();
@@ -884,7 +913,7 @@ async function cenaFinal(v, motivo) {
 
 Luft.aoDebug = () => {
   if ($('#dbgkill')) return;
-  const b = document.createElement('button'); b.id = 'dbgkill'; b.textContent = 'hit kill no inimigo';
+  const b = document.createElement('button'); b.id = 'dbgkill'; b.textContent = 'hit kill on enemy';
   b.style.cssText = 'position:absolute;top:40px;left:50%;transform:translateX(-50%);z-index:20;font-size:12px;padding:4px 10px;background:#5a1f1f;color:#ffd6d6;border:1px solid #a33;cursor:pointer;border-radius:3px';
   let ocupado = false;
   const bloq = (e) => e.stopImmediatePropagation();
@@ -894,7 +923,7 @@ Luft.aoDebug = () => {
     try {
       for (let i = 0; i < 6 && !U.unidade_derrotada(enemy); i++) await U.aplicar_dano(enemy, Math.max(1, U.vida_atual_principal(enemy)), true);
       const pv = pend && pend.find((it) => it.chave === 'pular_vez');
-      if (U.unidade_derrotada(enemy)) { if (pv && pendFim) pendFim(pv); else addLog('[debug] Inimigo eliminado. Faça qualquer ação para encerrar o turno.'); }
+      if (U.unidade_derrotada(enemy)) { if (pv && pendFim) pendFim(pv); else addLog('[debug] Enemy eliminated. Take any action to end the turn.'); }
     } catch (e) { console.warn('[debug hit kill]', e); }
     finally { dbgKill = false; removeEventListener('keydown', bloq, true); box.style.pointerEvents = ''; ocupado = false; }
   };
@@ -906,37 +935,37 @@ async function menuFlow(ladoPre) {
     fast = false;
     menu.style.display = 'none';
     player = U.criar_unidade(ladoPre); enemy = U.criar_unidade(ladoPre === 1 ? 2 : 1);
-    addLog(`Você escolheu: ${D[ladoPre].nome} (${D[ladoPre].nome_completo}).`); addLog(`Dificuldade: ${Luft.dif().nome}.`); addLog('A batalha vai começar!'); somAmbiente();
+    addLog(`You chose: ${D[ladoPre].nome} (${D[ladoPre].nome_completo}).`); addLog(`Difficulty: ${Luft.dif().nome}.`); addLog('The battle is about to begin!'); somAmbiente();
     await sleep(800);
     if (C.TUTORIAL_ATIVO && Luft.dif().tutorial && Luft.tutorial) await Luft.tutorial(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
-    box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
-    addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
+    box.innerHTML = `<b>END OF BATTLE — WINNER: ${v.nome}</b>${motivo === 'fuga' ? ' (by retreat)' : ''}<br><br><button onclick="location.reload()">Play again</button>`;
+    addLog(`--- END OF BATTLE ---`, 'h'); addLog(`WINNER: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
     return;
   }
-  menu.innerHTML = '<h1>L U F T B A L L O N S</h1><div>Selecione o modo de exibição</div><button id="mi">Modo imersivo (pausas e efeitos)</button><button id="mr">Modo rápido (texto instantâneo)</button>';
+  menu.innerHTML = '<h1>L U F T B A L L O N S</h1><div>Select display mode</div><button id="mi">Immersive mode (pauses and effects)</button><button id="mr">Fast mode (instant text)</button>';
   fast = await new Promise(r => { $('#mi').onclick = () => r(false); $('#mr').onclick = () => r(true); });
-  menu.innerHTML = '<div id="ty" style="font-size:22px;max-width:780px;min-height:170px"></div><button id="sk">Pular</button>';
+  menu.innerHTML = '<div id="ty" style="font-size:22px;max-width:780px;min-height:170px"></div><button id="sk">Skip</button>';
   let skip = false; $('#sk').onclick = () => { skip = true; };
-  const linhas = ['A liberdade é indivisível, e quando um homem é escravizado, todos não são livres.', '— John F. Kennedy, Berlim, 1963.', 'L U F T B A L L O N S', 'Bem-vindo ao Luftballons.', 'Assuma o comando de uma das forças da Guerra Fria (OTAN ou OVD) em uma batalha por turnos com economia de recursos.'];
+  const linhas = ['Freedom is indivisible, and when one man is enslaved, all are not free.', '— John F. Kennedy, Berlin, 1963.', 'L U F T B A L L O N S', 'Welcome to Luftballons.', 'Take command of one of the Cold War forces (NATO or Warsaw Pact) in a turn-based battle with resource management.'];
   for (const l of linhas) {
     const d = document.createElement('div'); d.style.margin = '8px 0'; $('#ty').appendChild(d);
     if (l.startsWith('L U')) d.style.cssText += ';font-size:38px;letter-spacing:.3em';
     for (const ch of l) { d.textContent += ch; if (!fast && !skip) await sleep(38); }
     if (!fast && !skip) await sleep(l.startsWith('—') ? 900 : 400);
   }
-  $('#sk').textContent = 'Escolher o lado'; $('#sk').onclick = null; await click('#sk');
-  menu.innerHTML = `<div style="font-size:20px">Escolha o seu lado nesta guerra</div>${comparativo()}${custos()}<div class="row"><button data-l="1">Jogar com a ${D[1].nome}</button><button data-l="2">Jogar com a ${D[2].nome}</button></div>`;
+  $('#sk').textContent = 'Choose your side'; $('#sk').onclick = null; await click('#sk');
+  menu.innerHTML = `<div style="font-size:20px">Choose your side in this war</div>${comparativo()}${custos()}<div class="row"><button data-l="1">Play as ${D[1].nome}</button><button data-l="2">Play as ${D[2].nome}</button></div>`;
   const l = await new Promise(r => menu.querySelectorAll('[data-l]').forEach(b => b.onclick = () => r(+b.dataset.l)));
   menu.style.display = 'none';
   if (menuFlowPre) { menuFlowPre = null; }
   player = U.criar_unidade(l); enemy = U.criar_unidade(l === 1 ? 2 : 1);
-  addLog(`Você escolheu: ${D[l].nome} (${D[l].nome_completo}).`); addLog(`Dificuldade: ${Luft.dif().nome}.`); addLog('A batalha vai começar!'); somAmbiente();
+  addLog(`You chose: ${D[l].nome} (${D[l].nome_completo}).`); addLog(`Difficulty: ${Luft.dif().nome}.`); addLog('The battle is about to begin!'); somAmbiente();
   await sleep(fast ? 0 : 800);
     if (C.TUTORIAL_ATIVO && Luft.dif().tutorial && Luft.tutorial) await Luft.tutorial(player, enemy);
     const motivo = await Luft.rodar_batalha(player, enemy), v = Luft.vencedor(player, enemy, motivo);
-  box.innerHTML = `<b>FIM DA BATALHA — VENCEDOR: ${v.nome}</b>${motivo === 'fuga' ? ' (por fuga)' : ''}<br><br><button onclick="location.reload()">Jogar de novo</button>`;
-  addLog(`--- FIM DA BATALHA ---`, 'h'); addLog(`VENCEDOR: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
+  box.innerHTML = `<b>END OF BATTLE — WINNER: ${v.nome}</b>${motivo === 'fuga' ? ' (by retreat)' : ''}<br><br><button onclick="location.reload()">Play again</button>`;
+  addLog(`--- END OF BATTLE ---`, 'h'); addLog(`WINNER: ${v.nome}!`, 'h'); cenaFinal(v, motivo);
 }
 Luft.iniciar = (lado) => menuFlow(lado); loop();
 })();

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Luftballons</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#0d1114;color:#d7dde0;font-family:system-ui,sans-serif}
@@ -17,8 +17,15 @@ button{background:#22313a;color:#e6ecef;border:1px solid #4a5d68;padding:7px 10p
 button:hover{background:#2f4551}button.x{background:#3a2222}
 .off{padding:7px 10px;color:#6b787e;font-size:13px;border:1px dashed #2f3c43;border-radius:3px}
 #log p{margin:2px 0;font-size:11px;opacity:.8}#log .h{color:#c9a227;font-weight:bold}
-#qte{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#0008}
-#qte button{font-size:34px;padding:22px 46px;background:#a32;animation:p .3s infinite alternate}
+#mira{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#000b;z-index:5}
+#mp{width:min(520px,60%);background:#10181d;border:1px solid #3a4850;padding:6px}
+#mh{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px 5px;font-size:11px;letter-spacing:.25em;color:#6b787e}#mh b{color:#c9a227;font-size:12px;font-weight:600}
+#mf{position:relative;width:100%;aspect-ratio:16/9;background:#1b262c;border:1px solid #2c3a41;overflow:hidden;cursor:none;user-select:none}
+#mf .grid{position:absolute;inset:0;background:linear-gradient(#ffffff0d 1px,transparent 1px) 0 0/12.5% 12.5%,linear-gradient(90deg,#ffffff0d 1px,transparent 1px) 0 0/12.5% 12.5%;pointer-events:none}
+#mc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#8a979d}#mc em{font-style:normal;letter-spacing:.4em;font-size:13px}
+#mr,#mm{position:absolute;width:60px;height:60px;transform:translate(-50%,-50%);pointer-events:none}#mr svg,#mm svg{width:100%;height:100%}#mm{width:52px;height:52px}
+#mx{display:none;position:absolute;left:0;right:0;top:10px;text-align:center;font-size:15px;font-weight:600;letter-spacing:.3em;pointer-events:none}#mx.ok{color:#7dff8a}#mx.mid{color:#c9a227}#mx.bad{color:#ff6a5a}
+#mt{height:2px;background:#2c3a41;margin-top:6px}#mt i{display:block;height:100%;width:100%;background:#c9a227}
 @keyframes p{to{transform:scale(1.08)}}
 #menu{position:fixed;inset:0;background:#0d1114f7;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;z-index:9;text-align:center;overflow:auto;padding:20px}table{border-collapse:collapse;font-size:14px}td,th{border:1px solid #33444d;padding:5px 12px;text-align:left}th{background:#18232a}#menu .row{display:flex;gap:16px}
 #menu h1{letter-spacing:.4em;margin:0;font-size:40px}#menu button{font-size:20px;padding:14px 36px;min-width:260px}
@@ -46,8 +53,8 @@ button:hover{background:#2f4551}button.x{background:#3a2222}
 .cbar{position:relative;width:min(26vw,300px);height:24px;background:#2a1a1a;border:2px solid #000}.cbar i{position:absolute;inset:0 auto 0 0;background:#c9a227;transition:width .4s}.cbar span{position:relative;display:block;text-align:center;font-size:14px;font-weight:bold;line-height:20px;text-shadow:0 0 3px #000,0 0 3px #000}
 </style></head><body>
 <div id="app"><div id="main"><div class="side" id="h0"></div><div id="stage"><canvas id="c" width="1376" height="768"></canvas>
-<div id="turno"></div><div id="comb" title="Combustível">⛽<div class="cbar"><i></i><span></span></div></div>
-<div id="qte"><button id="qb">REAGIR! (ENTER)</button></div></div><div class="side" id="h1"></div></div>
+<div id="turno"></div><div id="comb" title="Fuel">⛽<div class="cbar"><i></i><span></span></div></div>
+<div id="mira"></div></div><div class="side" id="h1"></div></div>
 <div id="bottom"><div id="acoes"></div><div id="log"></div></div></div>
 <div id="menu"></div>
 <script src="assets/assets.js"></script><script src="js/core.js"></script><script src="js/ui.js"></script><script src="js/intro.js"></script>

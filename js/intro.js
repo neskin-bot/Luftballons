@@ -1,26 +1,39 @@
 (() => {
 const FLAGS = { 1: 'assets/cenas/flag_otan.jpg', 2: 'assets/cenas/flag_ovd.jpg' };
-const NOMES = { 1: 'OTAN', 2: 'OVD' };
+const NOMES = { 1: 'NATO', 2: 'WARSAW PACT' };
 const SIGNIF = { 1: 'North Atlantic Treaty Organization', 2: 'Warsaw Treaty Organization' };
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const SONS = { ping: 'assets/audio/radar_ping.mp3', alarme: 'assets/audio/alarme.mp3', kennedy: 'assets/audio/kennedy.mp3', tv: 'assets/audio/tv.mp3', correndo: 'assets/audio/correndo.mp3', menu: 'assets/audio/menu.mp3' };
 const VOL = { ping: 5, alarme: .3, kennedy: 5, tv: 5, menu: 1, correndo: 5 };
+// Músicas de fundo do menu: uma é sorteada a cada vez que o jogo abre.
+// aoDigitar: true = a música só começa quando o título LUFTBALLONS começa a ser digitado.
+// Para adicionar mais: colocar o arquivo em assets/audio/ e acrescentar uma linha aqui.
+const MUSICAS = [
+  { src: 'assets/audio/menu.mp3', nome: 'Molchat Doma - Volny' },
+  { src: 'assets/audio/1.mp3', nome: 'Kino - Summer Will End' },
+  { src: 'assets/audio/2.mp3', nome: 'Kino - Blood Type' },
+  { src: 'assets/audio/3.mp3', nome: 'Molchat Doma - Deleted Your Number' },
+  { src: 'assets/audio/4.mp3', nome: 'NENA - 99 Luftballons' },
+  { src: 'assets/audio/5.mp3', nome: 'Ploho & Molchat Doma - On the Edge of the Island', aoDigitar: true },
+];
+const MUSICA = MUSICAS[Math.floor(Math.random() * MUSICAS.length)];
+SONS.menu = MUSICA.src;
 const fade = (a, ms = 1500) => { if (!a) return; const v0 = a.volume, t = performance.now(); const f = () => { const u = Math.min(1, (performance.now() - t) / ms); a.volume = v0 * (1 - u); if (u < 1) setTimeout(f, 40); else a.pause(); }; f(); };
-const tocar = (nome, loop = false) => { try { const a = new Audio(SONS[nome]); a.loop = loop; a.volume = (VOL[nome] ?? 5) / 10; a.onerror = () => console.warn('[áudio] não carregou:', SONS[nome], a.error && a.error.code); const p = a.play(); if (p && p.catch) p.catch(e => console.warn('[áudio] bloqueado/erro:', SONS[nome], e && e.name)); return a; } catch (e) { console.warn('[áudio] exceção', e); return null; } };
+const tocar = (nome, loop = false) => { try { const a = new Audio(SONS[nome]); a.loop = loop; a.volume = (VOL[nome] ?? 5) / 10; a.onerror = () => console.warn('[audio] failed to load:', SONS[nome], a.error && a.error.code); const p = a.play(); if (p && p.catch) p.catch(e => console.warn('[audio] blocked/error:', SONS[nome], e && e.name)); return a; } catch (e) { console.warn('[audio] exception', e); return null; } };
 
 const SFX = (() => {
   let A, hum;
-  const ac = () => { try { A = A || new (window.AudioContext || window.webkitAudioContext)(); if (A.state === 'suspended') A.resume(); return A; } catch (e) { return null; } };
+  const ac = () => { try { if (!A) { A = new (window.AudioContext || window.webkitAudioContext)(); A.master = A.createGain(); A.master.connect(A.destination); const mv = () => { A.master.gain.value = Luft.VOLUMES.geral * Luft.VOLUMES.ambiente; }; mv(); Luft.aoMudarVolume = mv; } if (A.state === 'suspended') A.resume(); return A; } catch (e) { return null; } };
   const gain = (a, v, dur) => { const g = a.createGain(), t = a.currentTime; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur); return g; };
-  const bip = (f, dur, v, tp = 'square', f2) => { const a = ac(); if (!a) return; const o = a.createOscillator(), g = gain(a, v, dur); o.type = tp; o.frequency.setValueAtTime(f, a.currentTime); if (f2) o.frequency.exponentialRampToValueAtTime(f2, a.currentTime + dur); o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + dur); };
-  const ruido = (dur, v, f0, f1) => { const a = ac(); if (!a) return; const b = a.createBuffer(1, a.sampleRate * dur | 0, a.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = a.createBufferSource(), fl = a.createBiquadFilter(), g = gain(a, v, dur); s.buffer = b; fl.type = 'lowpass'; fl.frequency.setValueAtTime(f0, a.currentTime); fl.frequency.exponentialRampToValueAtTime(f1, a.currentTime + dur); s.connect(fl).connect(g).connect(a.destination); s.start(); };
-  const clack = (v, freq, dur, grave) => { const a = ac(); if (!a) return; const n = a.sampleRate * dur | 0, b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0); for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / n, 3); const s = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain(); s.buffer = b; fl.type = 'bandpass'; fl.frequency.value = freq * (.9 + Math.random() * .2); fl.Q.value = 1.2; g.gain.value = v; s.connect(fl).connect(g).connect(a.destination); s.start(); if (grave) bip(grave, .05, v * .5, 'sine', grave * .5); };
+  const bip = (f, dur, v, tp = 'square', f2) => { const a = ac(); if (!a) return; const o = a.createOscillator(), g = gain(a, v, dur); o.type = tp; o.frequency.setValueAtTime(f, a.currentTime); if (f2) o.frequency.exponentialRampToValueAtTime(f2, a.currentTime + dur); o.connect(g).connect(a.master); o.start(); o.stop(a.currentTime + dur); };
+  const ruido = (dur, v, f0, f1) => { const a = ac(); if (!a) return; const b = a.createBuffer(1, a.sampleRate * dur | 0, a.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; const s = a.createBufferSource(), fl = a.createBiquadFilter(), g = gain(a, v, dur); s.buffer = b; fl.type = 'lowpass'; fl.frequency.setValueAtTime(f0, a.currentTime); fl.frequency.exponentialRampToValueAtTime(f1, a.currentTime + dur); s.connect(fl).connect(g).connect(a.master); s.start(); };
+  const clack = (v, freq, dur, grave) => { const a = ac(); if (!a) return; const n = a.sampleRate * dur | 0, b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0); for (let k = 0; k < n; k++) d[k] = (Math.random() * 2 - 1) * Math.pow(1 - k / n, 3); const s = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain(); s.buffer = b; fl.type = 'bandpass'; fl.frequency.value = freq * (.9 + Math.random() * .2); fl.Q.value = 1.2; g.gain.value = v; s.connect(fl).connect(g).connect(a.master); s.start(); if (grave) bip(grave, .05, v * .5, 'sine', grave * .5); };
   return {
     tecla() { clack(.5, 2200, .03, 150 + Math.random() * 30); },
     hover() { clack(.12, 1800, .02); },
     click() { clack(.7, 1300, .07, 95); },
     tv() { tocar('tv'); },
-    humOn() { const a = ac(); if (!a || hum) return; const b = a.createBuffer(1, a.sampleRate * 2, a.sampleRate), d = b.getChannelData(0); for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1; const o = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain(); o.buffer = b; o.loop = true; fl.type = 'highpass'; fl.frequency.value = 3500; g.gain.value = .012; o.connect(fl).connect(g).connect(a.destination); o.start(); hum = { o, g }; },
+    humOn() { const a = ac(); if (!a || hum) return; const b = a.createBuffer(1, a.sampleRate * 2, a.sampleRate), d = b.getChannelData(0); for (let k = 0; k < d.length; k++) d[k] = Math.random() * 2 - 1; const o = a.createBufferSource(), fl = a.createBiquadFilter(), g = a.createGain(); o.buffer = b; o.loop = true; fl.type = 'highpass'; fl.frequency.value = 3500; g.gain.value = .012; o.connect(fl).connect(g).connect(a.master); o.start(); hum = { o, g }; },
     humOff() { if (!hum) return; const a = ac(), h = hum; hum = null; h.g.gain.setValueAtTime(h.g.gain.value, a.currentTime); h.g.gain.linearRampToValueAtTime(0, a.currentTime + .6); h.o.stop(a.currentTime + .65); }
   };
 })();
@@ -66,6 +79,14 @@ const css = `
 #intro .cred div{opacity:0;animation:autor .7s ease forwards;margin-bottom:6px}
 #intro .cred .t{letter-spacing:.3em;margin-bottom:14px}
 #intro .cred .k{opacity:.6}
+#intro .mus{position:absolute;left:18px;bottom:14px;z-index:3;opacity:.7;font-size:.9rem;letter-spacing:.08em;max-width:60vw}
+#intro .opv{width:min(560px,80vw);line-height:1.5}#intro .opv .t{letter-spacing:.3em;margin-bottom:12px}
+#intro .vl{display:grid;grid-template-columns:11em 1fr 3.2em;gap:12px;align-items:center;margin:10px 0}
+#intro .vl input{accent-color:#33ff66;width:100%;cursor:pointer}#intro .vl b{text-align:right;font-weight:normal}
+#intro .ver{position:absolute;right:18px;bottom:14px;opacity:.65;font-size:.9rem;letter-spacing:.12em}
+#intro .dlog{max-height:52vh;overflow:auto;padding-right:14px;line-height:1.5;font-size:clamp(.85rem,1.4vw,1.05rem);margin-bottom:10px}
+#intro .dlog .t{letter-spacing:.3em;margin-bottom:12px}
+#intro .dlog .v{margin-bottom:12px}#intro .dlog .k{opacity:.6}#intro .dlog ul{margin:4px 0 0;padding-left:20px}
 #intro .go{font:inherit;font-size:1.15rem;letter-spacing:.12em;margin-top:60px;color:#33ff66;background:transparent;border:1px solid #33ff66;padding:12px 30px;cursor:pointer;border-radius:0;text-shadow:inherit;opacity:0;transition:opacity .6s,background .15s,color .15s}
 #intro .go.on{opacity:1}
 #intro .go:hover{background:#33ff66;color:#020a02;text-shadow:none}
@@ -337,7 +358,7 @@ async function intro() {
   const somK = tocar('kennedy');
   await Promise.race([sleep(13000), new Promise(r => t2.querySelector('.skip').onclick = r)]);
   fade(somK, 1500);
-  const somMenu = tocar('menu', true);
+  let somMenu = MUSICA.aoDigitar ? null : tocar('menu', true);
   limpar();
 
   await ligarTV();
@@ -345,19 +366,38 @@ async function intro() {
   const t3 = tela('<h1></h1><div class="menu"></div>');
   t3.classList.add('esq');
   await sleep(300);
+  const mus = el('mus'); mus.textContent = '♪ ' + MUSICA.nome;
+  if (MUSICA.aoDigitar) { somMenu = tocar('menu', true); root.appendChild(mus); }
   await digitar(t3.querySelector('h1'), 'LUFTBALLONS', 130);
   await sleep(500);
   const menu = t3.querySelector('.menu');
+  const ver = el('ver'); ver.textContent = 'v' + Luft.VERSAO; t3.appendChild(ver);
+  if (!MUSICA.aoDigitar) root.appendChild(mus);
   const botao = (txt, fn) => { const b = el('go', 'button'); b.innerHTML = txt; b.onclick = fn; menu.appendChild(b); setTimeout(() => b.classList.add('on'), 40); };
-  const CRED = [['Desenvolvedor principal', 'Luiz E.'], ['Parte gráfica', 'AI'], ['Dublagem', 'Luiz E., GRdolzan, GBmoser'], ['Efeitos sonoros', 'Warthunder, Escape from Tarkov']];
+  const CRED = [['Lead developer', 'Luiz E.'], ['Graphics', 'AI'], ['Voice acting', 'Luiz E., GRdolzan, GBmoser'], ['Sound effects', 'Warthunder, Escape from Tarkov']];
   await new Promise(res => {
-    const principal = () => { menu.innerHTML = ''; botao('&gt; Iniciar', res); botao('&gt; Créditos', creditos); };
+    const principal = () => { menu.innerHTML = ''; botao('&gt; Start', res); botao('&gt; Options', opcoes); botao('&gt; Development log', devlog); botao('&gt; Credits', creditos); };
+    const opcoes = () => {
+      menu.innerHTML = '';
+      const c = el('opv');
+      c.innerHTML = '<div class="t">OPTIONS — VOLUME</div>' + Luft.VOLUMES_ROTULOS.map(([k, rot]) => `<label class="vl"><span>${rot}</span><input type="range" min="0" max="100" step="5" value="${Math.round(Luft.VOLUMES[k] * 100)}" data-k="${k}"><b>${Math.round(Luft.VOLUMES[k] * 100)}%</b></label>`).join('');
+      c.querySelectorAll('input').forEach(i => i.oninput = () => { Luft.definir_volume(i.dataset.k, i.value / 100); i.nextElementSibling.textContent = i.value + '%'; });
+      menu.appendChild(c);
+      botao('&gt; Back', principal);
+    };
+    const devlog = () => {
+      menu.innerHTML = '';
+      const c = el('dlog');
+      c.innerHTML = '<div class="t">DEVELOPMENT LOG</div>' + [...Luft.DEV_LOG].reverse().map(e => `<div class="v"><b>v${e.versao}</b> <span class="k">— ${e.data || 'date not recorded'}</span><ul>${e.itens.map(i => `<li>${i}</li>`).join('')}</ul></div>`).join('');
+      menu.appendChild(c);
+      botao('&gt; Back', principal);
+    };
     const creditos = () => {
       menu.innerHTML = '';
       const c = el('cred');
-      c.innerHTML = '<div class="t">CRÉDITOS</div>' + CRED.map(([k, v], n) => `<div style="animation-delay:${(n + 1) * .3}s"><span class="k">${k}:</span> ${v}</div>`).join('');
+      c.innerHTML = '<div class="t">CREDITS</div>' + CRED.map(([k, v], n) => `<div style="animation-delay:${(n + 1) * .3}s"><span class="k">${k}:</span> ${v}</div>`).join('');
       menu.appendChild(c);
-      botao('&gt; Voltar', principal);
+      botao('&gt; Back', principal);
     };
     principal();
   });
@@ -366,12 +406,12 @@ async function intro() {
   const t4 = tela('<h2></h2><div class="dif"></div><div class="band"></div>');
   const band = t4.querySelector('.band'), dif = t4.querySelector('.dif');
   const CD = Luft.C.DIFICULDADES;
-  dif.innerHTML = '<div class="rot">DIFICULDADE</div><div class="opc"></div><div class="desc"></div>';
+  dif.innerHTML = '<div class="rot">DIFFICULTY</div><div class="opc"></div><div class="desc"></div>';
   const opc = dif.querySelector('.opc'), desc = dif.querySelector('.desc'), bts = {};
   const marcar = (k) => {
     Luft.definir_dificuldade(k);
     for (const x in bts) bts[x].classList.toggle('sel', x === k);
-    desc.textContent = CD[k].desc + (CD[k].tutorial && Luft.C.TUTORIAL_ATIVO ? ' Inclui tutorial.' : '');
+    desc.textContent = CD[k].desc + (CD[k].tutorial && Luft.C.TUTORIAL_ATIVO ? ' Includes tutorial.' : '');
   };
   for (const k of Object.keys(CD)) {
     const b = el('', 'button'); b.textContent = '> ' + CD[k].nome; b.onclick = () => marcar(k);
@@ -388,10 +428,10 @@ async function intro() {
       fig.onclick = () => res(l);
       band.appendChild(fig);
     }
-    await digitar(t4.querySelector('h2'), 'Escolha o seu lado', 55);
+    await digitar(t4.querySelector('h2'), 'Choose your side', 55);
     dif.classList.add('on'); band.classList.add('on');
   });
-  SFX.humOff(); fade(somMenu, 2000);
+  SFX.humOff(); fade(somMenu, 2000); mus.remove();
   await cenaRadar(lado);
   root.style.opacity = '0';
   await sleep(500);

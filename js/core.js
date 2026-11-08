@@ -1,8 +1,49 @@
 (function (root) {
 'use strict';
 const L = {};
+// ============================================================================
+// VERSÃO DO JOGO — REGRA DE MANUTENÇÃO (não remover este aviso)
+// Toda vez que algo novo for adicionado ou alterado no jogo:
+//   1) ADICIONAR uma entrada nova no FIM de L.DEV_LOG (data + lista do que mudou).
+//      NUNCA apagar nem editar entradas antigas, só acrescentar.
+//   2) AUMENTAR a versão dessa nova entrada:
+//        - mudança pequena (ajuste, balanceamento, correção): +0.1  (ex.: 1.2 -> 1.3)
+//        - muitas coisas novas / mudança grande (unidades, modos, regras): sobe para
+//          a próxima versão inteira (ex.: 1.x -> 2.0)
+// A versão mostrada no canto do menu é sempre a da última entrada do DEV_LOG.
+// ============================================================================
+L.DEV_LOG = [
+  { versao: '1.0', data: 'Oct 22, 2026', itens: ['Initial version of the game.'] },
+  { versao: '1.1', data: 'Oct 26, 2026', itens: ['Difficulty selection added.', 'Bot updated.'] },
+  { versao: '1.2', data: 'Nov 06, 2026', itens: [
+    'SMG: cost 10 → 8 pts.',
+    'Anti-tank: cost 30 → 25 pts; extra ammo 40 → 30 pts.',
+    'Armor against normal weapons: 10% → 20% of the damage gets through.',
+    'Skip turn: bonus 10 → 5 pts.',
+    'Warsaw Pact tanks: +1 round of fuel and −5 pts call cost.',
+    'NATO tanks: cannon max damage +2.',
+    'M103: reload 3 → 4 and fuel 3 → 4 rounds.',
+    'Warsaw Pact SMG (PPS-43): max ammo 16 → 20.',
+    'Anti-aircraft: Warsaw Pact 25% → 30% and NATO 35% → 30% interception chance.',
+    'Warsaw Pact artillery: damage per shot [6,9] → [7,10].',
+    'Tank cannons: 15% chance of a total miss; otherwise damage is between 75% and 100% of the max.',
+    'Version number and Development log added to the menu.',
+    'Menu background music drawn at random on each launch (6 tracks), with the track name shown in the bottom-left corner.',
+    'Options menu with volume controls: master, music, gunfire and combat, voice acting and ambience/intro (saved in the browser).',
+    'Whole game translated to English.',
+  ] },
+  { versao: '1.3', data: 'Nov 07, 2026', itens: [
+    'Attack rework: every player attack now opens an aiming minigame ("GET READY" for 1s, then a red crosshair appears for 0.8s at a random spot).',
+    'Damage depends on how close the click is to the red crosshair: perfect aim = max damage, no click = 0 damage (missed aim).',
+    'Cover reaction uses the same aiming minigame, without the "GET READY" delay.',
+    'Removed the SMG burst (single shot now, max 15 damage for both sides). Rifle max damage is now 10 for both sides.',
+    'Removed the molotov and the weapon-on-the-ground mechanic.',
+    'Bot aim accuracy now scales with difficulty.',
+  ] },
+];
+L.VERSAO = L.DEV_LOG[L.DEV_LOG.length - 1].versao;
 const HOOK = L.HOOK = {
-  say() {}, wait: async () => {}, fx: async () => {}, qte: async () => false,
+  say() {}, wait: async () => {}, fx: async () => {}, mira: async () => 1,
   escolherAcao: async () => 'pular_vez', resumo() {}, status() {}, limparTela() {},
 };
 
@@ -26,41 +67,41 @@ L.mostrar_resumo = (n) => {
 const C = L.C = {
   SUPORTE_AEREO_ATIVO: true,
   DADOS_LADOS: {
-    1: { nome: 'OTAN', nome_completo: 'Organização do Tratado do Atlântico Norte', vida_maxima: 100,
+    1: { nome: 'NATO', nome_completo: 'North Atlantic Treaty Organization', vida_maxima: 100,
          rifle_nome: 'M1 Garand', submetralhadora_nome: 'Thompson', suporte_nome: 'F-84F Thunderstreak',
-         bomba_nome: 'Mk 84', caminhao_nome: 'Caminhão M35', arma_anti_tank_nome: 'Bazooka M20', buff_defesa: 0 },
-    2: { nome: 'OVD', nome_completo: 'Organização do Pacto de Varsóvia', vida_maxima: 100,
+         bomba_nome: 'Mk 84', caminhao_nome: 'M35 Truck', arma_anti_tank_nome: 'Bazooka M20', buff_defesa: 0 },
+    2: { nome: 'Warsaw Pact', nome_completo: 'Warsaw Treaty Organization', vida_maxima: 100,
          rifle_nome: 'SKS', submetralhadora_nome: 'PPS-43', suporte_nome: 'Su-7B',
-         bomba_nome: 'FAB-500', caminhao_nome: 'Caminhão ZIL-157', arma_anti_tank_nome: 'RPG-2', buff_defesa: 0 },
+         bomba_nome: 'FAB-500', caminhao_nome: 'ZIL-157 Truck', arma_anti_tank_nome: 'RPG-2', buff_defesa: 0 },
   },
-  CUSTOS_ACAO: { rifle: 5, submetralhadora: 10, suprimento_medico: 25, suprimento_municao_rifle: 10,
-    suprimento_municao_smg: 30, anti_tank: 30, suprimento_municao_anti_tank: 40, molotov: 15, recolher_arma: 0,
+  CUSTOS_ACAO: { rifle: 5, submetralhadora: 8, suprimento_medico: 25, suprimento_municao_rifle: 10,
+    suprimento_municao_smg: 30, anti_tank: 25, suprimento_municao_anti_tank: 30, 
     sair_tanque: 0, cobertura: 0, tanque_metralhadora: 6, tanque_perfurante: 15, tanque_explosivo: 15,
     pular_vez: 0, fugir: 0, chamar_blindado: 0, reabastecer: 0, carregar_perfurante: 0, carregar_explosivo: 0 },
-  GANHO_PONTOS_TURNO: 10, BONUS_PULAR_VEZ: 10, PONTOS_INICIAIS: 30, CURA_SUPRIMENTO: 30,
-  MUNICAO_MAXIMA_RIFLE: 25, MUNICAO_GASTA_RIFLE: 5, MUNICAO_MAXIMA_SMG: 16, MUNICAO_GASTA_SMG: 4,
+  GANHO_PONTOS_TURNO: 10, BONUS_PULAR_VEZ: 5, PONTOS_INICIAIS: 30, CURA_SUPRIMENTO: 30,
+  MUNICAO_MAXIMA_RIFLE: 25, MUNICAO_GASTA_RIFLE: 5, MUNICAO_MAXIMA_SMG: { 1: 16, 2: 20 }, MUNICAO_GASTA_SMG: 4,
   MUNICAO_MAXIMA_ANTI_TANK: 2, MUNICAO_GASTA_ANTI_TANK: 1,
   TANQUES: {
-    1: { leve: { nome: 'Walker Bulldog', vida: 50, custo_chamar: 45, dano_max: 20, recarga_rodadas: 1, combustivel_rodadas: 5, custo_reabastecer: 15 },
-         medio: { nome: 'M48 Patton', vida: 80, custo_chamar: 65, dano_max: 25, recarga_rodadas: 2, combustivel_rodadas: 4, custo_reabastecer: 15 },
-         pesado: { nome: 'M103', vida: 110, custo_chamar: 90, dano_max: 30, recarga_rodadas: 3, combustivel_rodadas: 3, custo_reabastecer: 15 } },
-    2: { leve: { nome: 'BMP-1', vida: 50, custo_chamar: 45, dano_max: 20, recarga_rodadas: 1, combustivel_rodadas: 5, custo_reabastecer: 15 },
-         medio: { nome: 'T-54', vida: 80, custo_chamar: 65, dano_max: 25, recarga_rodadas: 2, combustivel_rodadas: 4, custo_reabastecer: 15 },
-         pesado: { nome: 'T-10M', vida: 110, custo_chamar: 90, dano_max: 30, recarga_rodadas: 3, combustivel_rodadas: 3, custo_reabastecer: 15 } },
+    1: { leve: { nome: 'Walker Bulldog', vida: 50, custo_chamar: 45, dano_max: 22, recarga_rodadas: 1, combustivel_rodadas: 5, custo_reabastecer: 15 },
+         medio: { nome: 'M48 Patton', vida: 80, custo_chamar: 65, dano_max: 27, recarga_rodadas: 2, combustivel_rodadas: 4, custo_reabastecer: 15 },
+         pesado: { nome: 'M103', vida: 110, custo_chamar: 90, dano_max: 32, recarga_rodadas: 4, combustivel_rodadas: 4, custo_reabastecer: 15 } },
+    2: { leve: { nome: 'BMP-1', vida: 50, custo_chamar: 40, dano_max: 20, recarga_rodadas: 1, combustivel_rodadas: 6, custo_reabastecer: 15 },
+         medio: { nome: 'T-54', vida: 80, custo_chamar: 60, dano_max: 25, recarga_rodadas: 2, combustivel_rodadas: 5, custo_reabastecer: 15 },
+         pesado: { nome: 'T-10M', vida: 110, custo_chamar: 85, dano_max: 30, recarga_rodadas: 3, combustivel_rodadas: 4, custo_reabastecer: 15 } },
   },
   SUPORTE_AEREO: { custo: 40, dano_frente: [20, 40], cooldown_rodadas: 4,
     rodadas_para_chegar: { 1: { frente: 3, suporte: 5 }, 2: { frente: 2, suporte: 3 } } },
-  MOLOTOV: { dano: [1, 10], rodadas: 3 },
   DANO_INCENDIARIO_POR_RODADA: 3, DURACAO_INCENDIARIO_ANTITANQUE: 3,
-  FATOR_DANO_ARMA_NORMAL_VS_TANQUE: 0.10,
+  FATOR_DANO_ARMA_NORMAL_VS_TANQUE: 0.20,
   COBERTURA_REDUCAO_MIN: 0.40, COBERTURA_REDUCAO_MAX: 0.70,
-  QTE_TEMPO_SEGUNDOS: 2.0,
+  MIRA: { preparo: 1, janela: 0.8, tolerancia_perfeita: 0.025, raio_zero: 0.42 },
+  DANO_MAX_RIFLE: { 1: 10, 2: 10 }, DANO_MAX_SMG: 15, DANO_MAX_ANTI_TANK_BLINDADO: 23, DANO_MAX_ANTI_TANK_INFANTARIA: 10, DANO_MAX_TANQUE_MG: 8,
   DANO_TANQUE_METRALHADORA: { faixa: [2, 8] }, TANQUE_DANO_MIN_ACERTO: 5,
-  TANQUE_FATOR_MUNICAO_ERRADA: 0.25,
+  TANQUE_FATOR_MUNICAO_ERRADA: 0.25, TANQUE_CHANCE_ERRO_TOTAL: 0.15, TANQUE_DANO_MIN_FRACAO: 0.75,
   LINHA_SUPORTE: {
     artilharia: { nomes: { 1: 'M55', 2: '2S1' }, custo_compra: 10, custo_uso: 15, tiros: 3,
-      dano_tiro: { 1: [8, 12], 2: [6, 9] }, cooldown_rodadas: { 1: 4, 2: 3 }, rodadas_para_chegar: 1 },
-    antiaerea: { nomes: { 1: 'VADS', 2: 'Shilka' }, custo_compra: 12, chance_interceptacao: { 1: 35, 2: 25 } },
+      dano_tiro: { 1: [8, 12], 2: [7, 10] }, cooldown_rodadas: { 1: 4, 2: 3 }, rodadas_para_chegar: 1 },
+    antiaerea: { nomes: { 1: 'VADS', 2: 'Shilka' }, custo_compra: 12, chance_interceptacao: { 1: 30, 2: 30 } },
   },
 };
 Object.assign(C.CUSTOS_ACAO, {
@@ -73,10 +114,10 @@ C.CAMINHAO = { custo_chamar: 0, rodadas_para_chegar: 5, vida: 30, bonus_pontos: 
 C.DIFICULDADE_PADRAO = 'medio';
 C.TUTORIAL_ATIVO = false;
 C.DIFICULDADES = {
-  facil: { nome: 'FÁCIL', desc: 'Bot passivo, erra bastante e ganha menos pontos.', temp: 30, erro: .08, persona: 'passivo', muda: false, blefa: false, le_jogador: false, planeja: false, combos: false, finaliza: false, qte: 20, pontos_rodada: -2, tutorial: true },
-  medio: { nome: 'MÉDIO', desc: 'Bot equilibrado, com estilo de jogo sorteado a cada partida.', temp: 18, erro: .03, persona: 'sorteada', muda: false, blefa: false, le_jogador: false, planeja: false, combos: false, finaliza: true, qte: 50, pontos_rodada: 0, tutorial: false },
-  dificil: { nome: 'DIFÍCIL', desc: 'Bot que lê as suas jogadas, planeja e muda de estilo no meio da partida.', temp: 8, erro: 0, persona: 'sorteada', muda: true, blefa: false, le_jogador: true, planeja: true, combos: false, finaliza: true, qte: 70, pontos_rodada: 0, tutorial: false },
-  impossivel: { nome: 'IMPOSSÍVEL', desc: 'Bot que blefa, encadeia combos e joga com vantagem de pontos.', temp: 4, erro: 0, persona: 'sorteada', muda: true, blefa: true, le_jogador: true, planeja: true, combos: true, finaliza: true, qte: 90, pontos_rodada: 5, tutorial: false },
+  facil: { nome: 'EASY', mira: [0.2, 0.85], desc: 'Passive bot: misses a lot and earns fewer points.', temp: 30, erro: .08, persona: 'passivo', muda: false, blefa: false, le_jogador: false, planeja: false, combos: false, finaliza: false, qte: 20, pontos_rodada: -2, tutorial: true },
+  medio: { nome: 'MEDIUM', mira: [0.5, 0.95], desc: 'Balanced bot with a playstyle drawn at random each match.', temp: 18, erro: .03, persona: 'sorteada', muda: false, blefa: false, le_jogador: false, planeja: false, combos: false, finaliza: true, qte: 50, pontos_rodada: 0, tutorial: false },
+  dificil: { nome: 'HARD', mira: [0.7, 1], desc: 'Bot that reads your moves, plans ahead and changes playstyle mid-match.', temp: 8, erro: 0, persona: 'sorteada', muda: true, blefa: false, le_jogador: true, planeja: true, combos: false, finaliza: true, qte: 70, pontos_rodada: 0, tutorial: false },
+  impossivel: { nome: 'IMPOSSIBLE', mira: [0.88, 1], desc: 'Bot that bluffs, chains combos and plays with a points advantage.', temp: 4, erro: 0, persona: 'sorteada', muda: true, blefa: true, le_jogador: true, planeja: true, combos: true, finaliza: true, qte: 90, pontos_rodada: 5, tutorial: false },
 };
 C.CUSTOS_ACAO.chamar_caminhao = C.CAMINHAO.custo_chamar; C.CUSTOS_ACAO.interceptar_caminhao = C.LINHA_SUPORTE.artilharia.custo_uso;
 const SUPR_CAMINHAO = new Set(['suprimento_medico', 'suprimento_municao_rifle', 'suprimento_municao_smg', 'suprimento_municao_anti_tank']);
@@ -84,10 +125,10 @@ const SUPR_CAMINHAO = new Set(['suprimento_medico', 'suprimento_municao_rifle', 
 const U = L.U = {};
 U.criar_unidade = (lado) => { const d = C.DADOS_LADOS[lado]; return {
   lado_id: lado, nome: d.nome, vida_atual: d.vida_maxima, vida_maxima: d.vida_maxima, pontos: C.PONTOS_INICIAIS,
-  municao_rifle: C.MUNICAO_MAXIMA_RIFLE, municao_smg: C.MUNICAO_MAXIMA_SMG, municao_anti_tank: C.MUNICAO_MAXIMA_ANTI_TANK,
+  municao_rifle: C.MUNICAO_MAXIMA_RIFLE, municao_smg: C.MUNICAO_MAXIMA_SMG[lado], municao_anti_tank: C.MUNICAO_MAXIMA_ANTI_TANK,
   efeito_incendiario_restante: 0, tanque_ativo: false, tanque_classe: null, tanque_combustivel: 0, tanque_recem_chamado: false,
   tanque_vida: 0, tanque_municao: null, tanque_recarga: 0, em_cobertura: false, cobertura_pendente: false,
-  fugiu: false, linha_suporte: [], molotov_restante: 0, arma_no_chao: false, ataque_aereo: null, aviao_cooldown: 0, caminhao: null, hist: [], ajuste_pontos: 0, interceptado: 0, ia: null }; };
+  fugiu: false, linha_suporte: [], ataque_aereo: null, aviao_cooldown: 0, caminhao: null, hist: [], ajuste_pontos: 0, interceptado: 0, ia: null }; };
 U.nome_tanque = (lado, classe) => C.TANQUES[lado][classe].nome;
 U.nome_alvo_principal = (u) => u.tanque_ativo ? U.nome_tanque(u.lado_id, u.tanque_classe) : C.DADOS_LADOS[u.lado_id].nome;
 U.vida_atual_principal = (u) => u.tanque_ativo ? u.tanque_vida : u.vida_atual;
@@ -102,7 +143,7 @@ U.consumir_cobertura_se_ativa = (u, dano) => {
   u.em_cobertura = false;
   const f = uniform(C.COBERTURA_REDUCAO_MIN, C.COBERTURA_REDUCAO_MAX);
   const r = Math.max(0, pyRound(dano * (1 - f)));
-  say(`Cobertura funcionou: dano ${dano} → ${r} (-${pyRound(f * 100)}%).`);
+  say(`Cover worked: damage ${dano} → ${r} (-${pyRound(f * 100)}%).`);
   fx('cobertura_absorve', { u });
   return r;
 };
@@ -110,7 +151,7 @@ U.aplicar_dano = async (u, dano, pular = false) => {
   let ef = dano;
   if (u.tanque_ativo && !pular) {
     const red = Math.max(0, pyRound(ef * C.FATOR_DANO_ARMA_NORMAL_VS_TANQUE));
-    say(`Blindagem do ${U.nome_tanque(u.lado_id, u.tanque_classe)}: dano ${ef} → ${red}.`);
+    say(`Armor of the ${U.nome_tanque(u.lado_id, u.tanque_classe)}: damage ${ef} → ${red}.`);
     ef = red;
   }
   ef = U.consumir_cobertura_se_ativa(u, ef);
@@ -118,7 +159,7 @@ U.aplicar_dano = async (u, dano, pular = false) => {
   if (u.tanque_ativo) {
     u.tanque_vida = Math.max(0, u.tanque_vida - ef);
     if (u.tanque_vida === 0) {
-      say(`${U.nome_tanque(u.lado_id, u.tanque_classe)} destruído!`);
+      say(`${U.nome_tanque(u.lado_id, u.tanque_classe)} destroyed!`);
       await fx('tanque_destruido', { u });
       await espera(1.5);
       u.tanque_ativo = false; u.tanque_municao = null; u.tanque_recarga = 0;
@@ -132,84 +173,74 @@ U.aplicar_cura = (u, c) => {
   else u.vida_atual = Math.min(u.vida_maxima, u.vida_atual + c);
 };
 U.dano_com_buff = (def, dano) => {
-  if (rand100() <= C.DADOS_LADOS[def.lado_id].buff_defesa * 100) { say(`Defesa do ${def.nome}: dano pela metade!`); return Math.floor(dano / 2); }
+  if (rand100() <= C.DADOS_LADOS[def.lado_id].buff_defesa * 100) { say(`Defense of ${def.nome}: damage halved!`); return Math.floor(dano / 2); }
   return dano;
 };
 const MUN = { rifle: ['municao_rifle', 'MUNICAO_GASTA_RIFLE', 'MUNICAO_MAXIMA_RIFLE'], smg: ['municao_smg', 'MUNICAO_GASTA_SMG', 'MUNICAO_MAXIMA_SMG'],
   anti_tank: ['municao_anti_tank', 'MUNICAO_GASTA_ANTI_TANK', 'MUNICAO_MAXIMA_ANTI_TANK'] };
+const mmax = (a, lado) => { const m = C[MUN[a][2]]; return typeof m === 'object' ? m[lado || 1] : m; };
 U.tem_municao = (u, a) => MUN[a] ? u[MUN[a][0]] >= C[MUN[a][1]] : true;
 U.usos_restantes = (u, a) => MUN[a] ? Math.floor(u[MUN[a][0]] / C[MUN[a][1]]) : 0;
-U.usos_maximos = (a) => MUN[a] ? Math.floor(C[MUN[a][2]] / C[MUN[a][1]]) : 0;
+U.usos_maximos = (a, lado) => MUN[a] ? Math.floor(mmax(a, lado) / C[MUN[a][1]]) : 0;
 U.consumir_municao = (u, a) => { if (MUN[a]) u[MUN[a][0]] -= C[MUN[a][1]]; };
-U.recarregar_municao = (u, a) => { if (MUN[a]) u[MUN[a][0]] = C[MUN[a][2]]; };
+U.recarregar_municao = (u, a) => { if (MUN[a]) u[MUN[a][0]] = mmax(a, u.lado_id); };
 
 const A = L.A = {};
+const mostrarTiros = async (t, p = 0.4) => { for (let i = 0; i < t.length; i++) { say(`  Shot ${i + 1} - ${t[i]} damage`); await espera(p); } };
+L.precisao = async (at, info) => {
+  if (L._prec_forcada != null) { const p = L._prec_forcada; L._prec_forcada = null; return p; }
+  if (at !== L.jogador_humano) { const [a, b] = DIF().mira; return a + Math.random() * (b - a); }
+  return Math.max(0, Math.min(1, await HOOK.mira({ ...info, at, prep: true })));
+};
+const marcaMira = (p) => p >= .95 ? ' (perfect aim!)' : p === 0 ? ' (missed aim)' : '';
+const danoMira = (def, max, p) => { const d = Math.round(max * p); return d > 0 ? U.dano_com_buff(def, d) : 0; };
 A.ataque_rifle = async (at, def) => {
   const d = C.DADOS_LADOS[at.lado_id];
-  let dano = at.lado_id === 1 ? ri(1, 20) : ri(1, 17);
-  dano = U.dano_com_buff(def, dano);
-  const marca = dano > 18 ? ' (crítico!)' : dano < 5 ? ' (erro de mira)' : '';
-  say(`${d.rifle_nome}: ${dano} de dano${marca}`);
+  const p = await L.precisao(at, { arma: 'rifle', def });
+  const dano = danoMira(def, C.DANO_MAX_RIFLE[at.lado_id], p);
+  say(`${d.rifle_nome}: ${dano} damage${marcaMira(p)}`);
   await fx('tiro', { at, def, arma: 'rifle', dano });
-  await U.aplicar_dano(def, dano);
+  if (dano > 0) await U.aplicar_dano(def, dano);
   U.consumir_municao(at, 'rifle'); await espera(1);
 };
-const mostrarTiros = async (t, p = 0.4) => { for (let i = 0; i < t.length; i++) { say(`  Tiro ${i + 1} - ${t[i]} de dano`); await espera(p); } };
 A.ataque_submetralhadora = async (at, def) => {
   const d = C.DADOS_LADOS[at.lado_id];
-  const f = at.lado_id === 1 ? [1, 7] : [1, 5];
-  const tiros = [0, 1, 2, 3].map(() => ri(...f));
-  say(`${d.submetralhadora_nome}:`);
+  const p = await L.precisao(at, { arma: 'smg', def });
+  const dano = danoMira(def, C.DANO_MAX_SMG, p);
+  say(`${d.submetralhadora_nome}: ${dano} damage${marcaMira(p)}`);
   await fx('rajada', { at, def, arma: 'smg', n: 4 });
-  await mostrarTiros(tiros);
-  const tot = U.dano_com_buff(def, tiros.reduce((a, b) => a + b, 0));
-  say(`  Total: ${tot} de dano`);
-  await U.aplicar_dano(def, tot); U.consumir_municao(at, 'smg'); await espera(1);
+  if (dano > 0) await U.aplicar_dano(def, dano);
+  U.consumir_municao(at, 'smg'); await espera(1);
 };
 A.ataque_anti_tank = async (at, def) => {
   const arma = C.DADOS_LADOS[at.lado_id].arma_anti_tank_nome;
+  const p = await L.precisao(at, { arma: 'anti_tank', def });
   let dano, desc;
   if (def.tanque_ativo) {
-    dano = ri(13, 23);
-    if (Math.random() < 0.1) { dano = 30; def.efeito_incendiario_restante = C.DURACAO_INCENDIARIO_ANTITANQUE; desc = 'CRÍTICO no blindado, incendiando-o'; }
-    else desc = 'acerta o blindado';
-  } else { dano = ri(5, 10); desc = 'pouco eficaz contra infantaria'; }
-  dano = U.dano_com_buff(def, dano);
-  say(`${arma}: ${desc}, ${dano} de dano`);
+    dano = Math.round(C.DANO_MAX_ANTI_TANK_BLINDADO * p); desc = 'hits the armored vehicle';
+    if (p >= .95 && Math.random() < 0.1) { dano = 30; def.efeito_incendiario_restante = C.DURACAO_INCENDIARIO_ANTITANQUE; desc = 'CRITICAL on the armored vehicle, setting it on fire'; }
+  } else { dano = Math.round(C.DANO_MAX_ANTI_TANK_INFANTARIA * p); desc = 'ineffective against infantry'; }
+  if (dano > 0) dano = U.dano_com_buff(def, dano);
+  say(`${arma}: ${desc}, ${dano} damage${marcaMira(p)}`);
   await fx('tiro', { at, def, arma: 'anti_tank', dano });
-  await U.aplicar_dano(def, dano, true);
+  if (dano > 0) await U.aplicar_dano(def, dano, true);
   U.consumir_municao(at, 'anti_tank'); await espera(1);
-};
-A.ataque_molotov = async (at, def) => {
-  const d = C.DADOS_LADOS[at.lado_id];
-  at.arma_no_chao = true; def.molotov_restante = C.MOLOTOV.rodadas;
-  say(`${at.nome} larga o ${d.arma_anti_tank_nome} no chão, acende uma molotov e a arremessa!`);
-  say(`${U.nome_alvo_principal(def)} pega fogo!`);
-  await fx('molotov', { at, def }); await espera(1.5);
 };
 
 L.aplica_efeito_incendiario = async (u) => {
   if (u.efeito_incendiario_restante > 0 && !U.unidade_derrotada(u)) {
     await U.aplicar_dano(u, C.DANO_INCENDIARIO_POR_RODADA);
     u.efeito_incendiario_restante -= 1;
-    say(`O incêndio continua queimando o ${U.nome_alvo_principal(u)}! Perdeu ${C.DANO_INCENDIARIO_POR_RODADA} de vida.`);
+    say(`The fire keeps burning ${U.nome_alvo_principal(u)}! Lost ${C.DANO_INCENDIARIO_POR_RODADA} HP.`);
     await espera(1.3);
   }
-};
-L.aplica_molotov = async (u) => {
-  if (u.molotov_restante <= 0 || U.unidade_derrotada(u)) return;
-  const nome = U.nome_alvo_principal(u);
-  const dano = U.dano_com_buff(u, ri(...C.MOLOTOV.dano));
-  const ef = await U.aplicar_dano(u, dano);
-  u.molotov_restante -= 1;
-  say(`O fogo da molotov queima ${nome}: ${ef} de dano.`); await espera(1.3);
 };
 
 const S = L.S = {};
 S.suprimento_medico = async (u) => { const d = C.DADOS_LADOS[u.lado_id]; U.aplicar_cura(u, C.CURA_SUPRIMENTO);
-  say(`${d.caminhao_nome}: ${U.nome_alvo_principal(u)} recupera ${C.CURA_SUPRIMENTO} de vida.`); await fx('suprimento', { u, tipo: 'medico' }); await espera(1); };
+  say(`${d.caminhao_nome}: ${U.nome_alvo_principal(u)} recovers ${C.CURA_SUPRIMENTO} HP.`); await fx('suprimento', { u, tipo: 'medico' }); await espera(1); };
 const mk = (arma, chave, campo) => async (u) => { const d = C.DADOS_LADOS[u.lado_id]; U.recarregar_municao(u, arma);
-  say(`${d.caminhao_nome}: ${d[campo]} recarregad${arma === 'smg' ? 'a' : 'o'} (${U.usos_restantes(u, arma)} usos).`); await fx('suprimento', { u, tipo: arma }); await espera(1); };
+  say(`${d.caminhao_nome}: ${d[campo]} restocked (${U.usos_restantes(u, arma)} uses).`); await fx('suprimento', { u, tipo: arma }); await espera(1); };
 S.suprimento_municao_rifle = mk('rifle', 'rifle', 'rifle_nome');
 S.suprimento_municao_smg = mk('smg', 'smg', 'submetralhadora_nome');
 S.suprimento_municao_anti_tank = mk('anti_tank', 'at', 'arma_anti_tank_nome');
@@ -221,35 +252,36 @@ T.canhao_pronto = (u) => T.tanque_operacional(u) && !!u.tanque_municao && u.tanq
 T.pode_carregar = (u) => T.tanque_operacional(u) && !u.tanque_municao;
 T.chamar_tanque = async (u, classe) => {
   const tc = C.TANQUES[u.lado_id][classe];
-  if (u.pontos < tc.custo_chamar) { say('Pontos insuficientes para chamar este blindado!'); await espera(1.5); return false; }
+  if (u.pontos < tc.custo_chamar) { say('Not enough points to call this armored vehicle!'); await espera(1.5); return false; }
   u.pontos -= tc.custo_chamar; u.em_cobertura = false; u.cobertura_pendente = false; u.tanque_ativo = true; u.tanque_classe = classe;
   u.tanque_vida = tc.vida; u.tanque_municao = null; u.tanque_combustivel = tc.combustivel_rodadas; u.tanque_recem_chamado = true; u.tanque_recarga = 0;
-  say(`${tc.nome} assume a linha de frente (combustível: ${tc.combustivel_rodadas} rodadas; ataca na próxima rodada).`);
+  say(`${tc.nome} takes the front line (fuel: ${tc.combustivel_rodadas} rounds; attacks next round).`);
   await fx('tanque_chega', { u, classe }); await espera(1.2); return true;
 };
 T.sair_do_tanque = async (u) => {
-  say(`A tripulação abandona o ${tcfg(u).nome} e volta a lutar como infantaria.`); await espera(1.3);
+  say(`The crew abandons the ${tcfg(u).nome} and goes back to fighting as infantry.`); await espera(1.3);
   Object.assign(u, { tanque_ativo: false, tanque_classe: null, tanque_combustivel: 0, tanque_vida: 0, tanque_municao: null, tanque_recem_chamado: false, tanque_recarga: 0 });
 };
 T.reabastecer = async (u) => {
   const tc = tcfg(u);
-  if (u.pontos < tc.custo_reabastecer) { say(`Pontos insuficientes para reabastecer o ${tc.nome}! (custo ${tc.custo_reabastecer})`); await espera(1.5); return; }
+  if (u.pontos < tc.custo_reabastecer) { say(`Not enough points to refuel the ${tc.nome}! (cost ${tc.custo_reabastecer})`); await espera(1.5); return; }
   u.pontos -= tc.custo_reabastecer; u.tanque_combustivel = tc.combustivel_rodadas;
-  say(`${tc.nome} reabastecido (${tc.combustivel_rodadas} rodadas de autonomia).`); await espera(1);
+  say(`${tc.nome} refueled (${tc.combustivel_rodadas} rounds of range).`); await espera(1);
 };
 T.ataque_tanque_metralhadora = async (at, def) => {
   const tc = tcfg(at);
-  let dano = ri(...C.DANO_TANQUE_METRALHADORA.faixa);
-  say(`${tc.nome}, metralhadora:`); await fx('rajada', { at, def, arma: 'tanque_mg', n: 1 });
-  dano = U.dano_com_buff(def, dano); say(`  Total: ${dano} de dano`);
-  await U.aplicar_dano(def, dano);
+  const p = await L.precisao(at, { arma: 'tanque_mg', def });
+  const dano = danoMira(def, C.DANO_MAX_TANQUE_MG, p);
+  say(`${tc.nome}, machine gun: ${dano} damage${marcaMira(p)}`); await fx('rajada', { at, def, arma: 'tanque_mg', n: 1 });
+  if (dano > 0) await U.aplicar_dano(def, dano);
   await espera(1);
 };
 const canhao = async (at, def, tipo) => {
-  const tc = tcfg(at), certa = (tipo === 'perfurante') === def.tanque_ativo, rolado = ri(0, tc.dano_max);
+  const tc = tcfg(at), certa = (tipo === 'perfurante') === def.tanque_ativo;
+  const p = await L.precisao(at, { arma: 'canhao', def, tipo }), rolado = Math.round(tc.dano_max * p);
   let dano = certa ? rolado : pyRound(rolado * C.TANQUE_FATOR_MUNICAO_ERRADA);
   if (dano > 0) dano = U.dano_com_buff(def, dano);
-  say(rolado === 0 ? `${tc.nome}, tiro ${tipo}: erra o alvo!` : `${tc.nome}, tiro ${tipo}: ${dano} de dano em ${def.tanque_ativo ? 'blindado' : 'infantaria'}${certa ? '' : ' (munição inadequada, -75%)'}.`);
+  say(rolado === 0 ? `${tc.nome}, ${tipo === 'perfurante' ? 'AP' : 'HE'} shot: misses the target (missed aim)!` : `${tc.nome}, ${tipo === 'perfurante' ? 'AP' : 'HE'} shot: ${dano} damage on ${def.tanque_ativo ? 'armor' : 'infantry'}${certa ? '' : ' (wrong ammo, -75%)'}.`);
   await fx('tiro_tanque', { at, def, tipo, acertou: dano >= C.TANQUE_DANO_MIN_ACERTO });
   at.tanque_municao = null;
   if (dano > 0) await U.aplicar_dano(def, dano, true);
@@ -262,16 +294,16 @@ T.processa_chegada_e_cooldown_tanque = async (u) => {
   if (u.tanque_recem_chamado) { u.tanque_recem_chamado = false; return; }
   if (u.tanque_combustivel <= 0) return;
   u.tanque_combustivel -= 1;
-  if (u.tanque_combustivel === 0) { say(`O combustível acabou! O ${tcfg(u).nome} não pode mais agir.`); await espera(1.5); return; }
+  if (u.tanque_combustivel === 0) { say(`Out of fuel! The ${tcfg(u).nome} can no longer act.`); await espera(1.5); return; }
   if (u.tanque_recarga > 0) {
     u.tanque_recarga -= 1;
-    if (u.tanque_recarga === 0 && u.tanque_municao) { say(`${tcfg(u).nome}: canhão carregado e pronto para atirar.`); await fx('tanque_pronto', { u }); await espera(1); }
+    if (u.tanque_recarga === 0 && u.tanque_municao) { say(`${tcfg(u).nome}: cannon loaded and ready to fire.`); await fx('tanque_pronto', { u }); await espera(1); }
   }
 };
 T.carregar = async (u, tipo) => {
   const tc = tcfg(u);
   u.tanque_municao = tipo; u.tanque_recarga = tc.recarga_rodadas;
-  say(`${tc.nome}: carregando munição ${tipo === 'perfurante' ? 'perfurante' : 'explosiva'} (pronto em ${tc.recarga_rodadas} rodada(s)).`);
+  say(`${tc.nome}: loading ${tipo === 'perfurante' ? 'AP' : 'HE'} ammo (ready in ${tc.recarga_rodadas} round(s)).`);
   await fx('tanque_carrega', { u, tipo }); await espera(1);
 };
 
@@ -281,7 +313,7 @@ LS.tem = (u, t) => item(u, t) !== null;
 LS.nome = (u, t) => C.LINHA_SUPORTE[t].nomes[u.lado_id];
 LS.nomes_comprados = (u) => u.linha_suporte.map(i => LS.nome(u, i.tipo));
 LS.comprar = async (u, t) => { u.linha_suporte.push({ tipo: t, cooldown: 0, bloqueado: false, chegada: 0 });
-  say(`${LS.nome(u, t)} entra na linha de suporte.`); await fx('suporte_compra', { u, tipo: t }); await espera(1); };
+  say(`${LS.nome(u, t)} joins the support line.`); await fx('suporte_compra', { u, tipo: t }); await espera(1); };
 LS.destruir_unidade_suporte = (u, t) => { u.linha_suporte = u.linha_suporte.filter(i => i.tipo !== t); };
 LS.processa_cooldown = (u) => { for (const i of u.linha_suporte) { if (i.cooldown > 0) { i.bloqueado = true; i.cooldown -= 1; } else i.bloqueado = false; } };
 LS.artilharia_a_caminho = (u) => { const i = item(u, 'artilharia'); return i !== null && i.chegada > 0 && i.alvo !== 'caminhao'; };
@@ -289,13 +321,13 @@ LS.pode_solicitar_artilharia = (u) => { const i = item(u, 'artilharia'); return 
 LS.solicitar_artilharia = async (at) => {
   const cfg = C.LINHA_SUPORTE.artilharia, i = item(at, 'artilharia');
   i.chegada = cfg.rodadas_para_chegar; i.cooldown = cfg.cooldown_rodadas[at.lado_id]; i.alvo = 'frente';
-  say(`${LS.nome(at, 'artilharia')} abre fogo!`); say('Se escuta tiros de uma barragem de artilharia!');
+  say(`${LS.nome(at, 'artilharia')} opens fire!`); say('You hear the sound of an artillery barrage!');
   await fx('artilharia_fogo', { u: at }); await espera(1.5);
 };
 LS.interceptar_caminhao = async (at, op) => {
   const cfg = C.LINHA_SUPORTE.artilharia, i = item(at, 'artilharia');
   i.chegada = cfg.rodadas_para_chegar; i.cooldown = cfg.cooldown_rodadas[at.lado_id]; i.alvo = 'caminhao';
-  say(`${LS.nome(at, 'artilharia')} mira a estrada para interceptar o caminhão!`); say('Se escuta tiros de uma barragem de artilharia!');
+  say(`${LS.nome(at, 'artilharia')} aims at the road to intercept the truck!`); say('You hear the sound of an artillery barrage!');
   await fx('artilharia_fogo', { u: at }); await espera(1.5);
 };
 LS.processa_chegada = async (u, op) => {
@@ -304,15 +336,15 @@ LS.processa_chegada = async (u, op) => {
   i.chegada -= 1; if (i.chegada > 0) return;
   if (i.alvo === 'caminhao') {
     i.alvo = 'frente';
-    if (CM.a_caminho(op)) { say(`A barragem de ${LS.nome(u, 'artilharia')} atinge o ${C.DADOS_LADOS[op.lado_id].caminhao_nome} na estrada!`); await fx('caminhao_interceptado', { u, alvo: op }); await CM.destruir(op, 'interceptado'); }
-    else { say('A barragem cai na estrada vazia: o caminhão já tinha passado.'); await espera(1); }
+    if (CM.a_caminho(op)) { say(`The ${LS.nome(u, 'artilharia')} barrage hits the ${C.DADOS_LADOS[op.lado_id].caminhao_nome} on the road!`); await fx('caminhao_interceptado', { u, alvo: op }); await CM.destruir(op, 'interceptado'); }
+    else { say('The barrage lands on an empty road: the truck had already passed.'); await espera(1); }
     return;
   }
   const cfg = C.LINHA_SUPORTE.artilharia;
-  say(`A barragem de ${LS.nome(u, 'artilharia')} atinge o alvo!`);
+  say(`The ${LS.nome(u, 'artilharia')} barrage hits the target!`);
   const tiros = Array.from({ length: cfg.tiros }, () => ri(...cfg.dano_tiro[u.lado_id]));
   await fx('artilharia_impacto', { u, alvo: op }); await mostrarTiros(tiros);
-  const tot = U.dano_com_buff(op, tiros.reduce((a, b) => a + b, 0)); say(`  Total: ${tot} de dano`);
+  const tot = U.dano_com_buff(op, tiros.reduce((a, b) => a + b, 0)); say(`  Total: ${tot} damage`);
   await U.aplicar_dano(op, tot); await espera(1);
 };
 LS.tentar_interceptar = (def) => LS.tem(def, 'antiaerea') && rand100() <= C.LINHA_SUPORTE.antiaerea.chance_interceptacao[def.lado_id];
@@ -322,14 +354,14 @@ LS.aviao_disponivel = (u) => u.ataque_aereo === null && u.aviao_cooldown === 0;
 LS.aviao_chegando = (u) => u.ataque_aereo !== null && u.ataque_aereo.chegada === 1;
 LS.status_aereo = (u) => {
   const av = C.DADOS_LADOS[u.lado_id].suporte_nome;
-  if (u.ataque_aereo !== null) return `${av} a caminho (chega em ${u.ataque_aereo.chegada})`;
-  if (u.aviao_cooldown > 0) return `${av} em recarga (${u.aviao_cooldown})`;
-  return `${av} pronto`;
+  if (u.ataque_aereo !== null) return `${av} on its way (arrives in ${u.ataque_aereo.chegada})`;
+  if (u.aviao_cooldown > 0) return `${av} on cooldown (${u.aviao_cooldown})`;
+  return `${av} ready`;
 };
 LS.solicitar_ataque_aereo = async (u, alvo) => {
   const d = C.DADOS_LADOS[u.lado_id];
   u.ataque_aereo = { alvo, chegada: LS.rodadas_chegada(u, alvo) };
-  say(`O ${d.suporte_nome} decola carregado de bombas ${d.bomba_nome}!`); say('Se escuta o ronco de motores a jato no horizonte!');
+  say(`The ${d.suporte_nome} takes off loaded with ${d.bomba_nome} bombs!`); say('You hear the roar of jet engines on the horizon!');
   await fx('aviao_decola', { u }); await espera(1.5);
 };
 const encerrar = (u) => { u.ataque_aereo = null; u.aviao_cooldown = C.SUPORTE_AEREO.cooldown_rodadas; };
@@ -339,19 +371,19 @@ LS.processa_ataque_aereo = async (u, op) => {
   const d = C.DADOS_LADOS[u.lado_id], av = d.suporte_nome;
   m.chegada -= 1;
   if (LS.tentar_interceptar(op)) {
-    say(`A ${LS.nome(op, 'antiaerea')} intercepta e derruba o ${av}!`);
+    say(`The ${LS.nome(op, 'antiaerea')} intercepts and shoots down the ${av}!`);
     await fx('interceptacao', { aviao_de: u, antiaerea_de: op }); u.interceptado += 1; encerrar(u); await espera(1.5); return;
   }
-  if (m.chegada > 0) { say(`O ${av} segue a caminho do alvo (${m.chegada} rodada(s)).`); await espera(1); return; }
+  if (m.chegada > 0) { say(`The ${av} keeps heading to the target (${m.chegada} round(s)).`); await espera(1); return; }
   const alvo = m.alvo; encerrar(u);
-  say(`O ${av} chega ao alvo e lança as bombas ${d.bomba_nome}!`);
+  say(`The ${av} reaches the target and drops its ${d.bomba_nome} bombs!`);
   const dano = alvo === 'frente' ? U.dano_com_buff(op, ri(...C.SUPORTE_AEREO.dano_frente)) : 0;
   await fx('bombardeio', { u, alvo_tipo: alvo, op, dano, existe: alvo === 'frente' || LS.tem(op, alvo) });
   if (alvo === 'frente') {
     const nome = U.nome_alvo_principal(op);
-    say(`O bombardeio atinge ${nome}: ${dano} de dano.`); await U.aplicar_dano(op, dano, true);
-  } else if (LS.tem(op, alvo)) { say(`Unidade de suporte destruída: ${LS.nome(op, alvo)}!`); LS.destruir_unidade_suporte(op, alvo); }
-  else say('O alvo já não está lá, as bombas caem no vazio.');
+    say(`The bombing hits ${nome}: ${dano} damage.`); await U.aplicar_dano(op, dano, true);
+  } else if (LS.tem(op, alvo)) { say(`Support unit destroyed: ${LS.nome(op, alvo)}!`); LS.destruir_unidade_suporte(op, alvo); }
+  else say('The target is no longer there, the bombs fall into the void.');
   await espera(1.5);
 };
 
@@ -360,17 +392,17 @@ const cnome = (u) => C.DADOS_LADOS[u.lado_id].caminhao_nome;
 CM.ativo = (u) => !!u.caminhao && u.caminhao.estado === 'ativo';
 CM.a_caminho = (u) => !!u.caminhao && u.caminhao.estado === 'a_caminho';
 CM.chamar = async (u) => { u.caminhao = { estado: 'a_caminho', chegada: C.CAMINHAO.rodadas_para_chegar, vida: C.CAMINHAO.vida };
-  say(`${u.nome} chama o ${cnome(u)}! Chega em ${C.CAMINHAO.rodadas_para_chegar} rodadas.`); await fx('caminhao_chamado', { u }); await espera(1); };
+  say(`${u.nome} calls the ${cnome(u)}! Arrives in ${C.CAMINHAO.rodadas_para_chegar} rounds.`); await fx('caminhao_chamado', { u }); await espera(1); };
 CM.processa_chegada = async (u) => { if (!CM.a_caminho(u)) return; u.caminhao.chegada -= 1; if (u.caminhao.chegada > 0) return;
-  u.caminhao.estado = 'ativo'; say(`${cnome(u)} chegou! Suprimentos instantâneos e +${C.CAMINHAO.bonus_pontos} pts por rodada.`);
+  u.caminhao.estado = 'ativo'; say(`${cnome(u)} has arrived! Instant supplies and +${C.CAMINHAO.bonus_pontos} pts per round.`);
   await fx('caminhao_chega', { u }); await espera(1); };
 CM.dano = async (u, ef) => { if (!CM.ativo(u)) return; const d = pyRound(ef * C.CAMINHAO.fator_dano); if (d <= 0) return;
-  u.caminhao.vida = Math.max(0, u.caminhao.vida - d); say(`${cnome(u)} sofre ${d} de dano (${u.caminhao.vida}/${C.CAMINHAO.vida}).`);
+  u.caminhao.vida = Math.max(0, u.caminhao.vida - d); say(`${cnome(u)} takes ${d} damage (${u.caminhao.vida}/${C.CAMINHAO.vida}).`);
   if (u.caminhao.vida === 0) await CM.destruir(u, 'dano'); };
-CM.destruir = async (u, motivo) => { say(`${cnome(u)} destruído!`); await fx('caminhao_destruido', { u, motivo }); u.caminhao = null; await espera(1); };
+CM.destruir = async (u, motivo) => { say(`${cnome(u)} destroyed!`); await fx('caminhao_destruido', { u, motivo }); u.caminhao = null; await espera(1); };
 
 const Tn = L.Tn = {};
-const ACOES_ATAQUE = { rifle: A.ataque_rifle, submetralhadora: A.ataque_submetralhadora, anti_tank: A.ataque_anti_tank, molotov: A.ataque_molotov,
+const ACOES_ATAQUE = { rifle: A.ataque_rifle, submetralhadora: A.ataque_submetralhadora, anti_tank: A.ataque_anti_tank,
   tanque_metralhadora: T.ataque_tanque_metralhadora, tanque_perfurante: T.ataque_tanque_perfurante, tanque_explosivo: T.ataque_tanque_explosivo,
   solicitar_artilharia: LS.solicitar_artilharia, interceptar_caminhao: LS.interceptar_caminhao };
 const ACOES_SUPRIMENTO = { suprimento_medico: S.suprimento_medico, suprimento_municao_rifle: S.suprimento_municao_rifle,
@@ -381,111 +413,106 @@ Tn.montar_opcoes_disponiveis = (u) => {
   const add = (chave, texto) => { o.push({ n: n++, chave, texto }); };
   const info = (texto) => o.push({ n: null, chave: null, texto });
   if (u.tanque_ativo) {
-    const tc = tcfg(u), nm = { perfurante: 'perfurante (vs blindado)', explosivo: 'explosiva (vs infantaria)' };
+    const tc = tcfg(u), nm = { perfurante: 'AP (vs armor)', explosivo: 'HE (vs infantry)' };
     if (T.tanque_operacional(u)) {
-      add('tanque_metralhadora', `Metralhadora do tanque (${cu.tanque_metralhadora} pts)`);
+      add('tanque_metralhadora', `Tank machine gun (${cu.tanque_metralhadora} pts)`);
       if (u.tanque_municao) {
-        if (T.canhao_pronto(u)) add('tanque_' + u.tanque_municao, `Atirar: ${nm[u.tanque_municao]} (${cu['tanque_' + u.tanque_municao]} pts)`);
-        else info(`Canhão recarregando ${nm[u.tanque_municao]} (${u.tanque_recarga} rodada(s))`);
+        if (T.canhao_pronto(u)) add('tanque_' + u.tanque_municao, `Fire: ${nm[u.tanque_municao]} (${cu['tanque_' + u.tanque_municao]} pts)`);
+        else info(`Cannon reloading ${nm[u.tanque_municao]} (${u.tanque_recarga} round(s))`);
       } else {
-        add('carregar_perfurante', `Carregar perfurante (AP, vs blindado, recarga ${tc.recarga_rodadas})`);
-        add('carregar_explosivo', `Carregar explosiva (HE, vs infantaria, recarga ${tc.recarga_rodadas})`);
+        add('carregar_perfurante', `Load AP (vs armor, reload ${tc.recarga_rodadas})`);
+        add('carregar_explosivo', `Load HE (vs infantry, reload ${tc.recarga_rodadas})`);
       }
     } else if (u.tanque_combustivel <= 0) {
-      info(`Tanque sem combustível${u.tanque_municao ? ` (recarga congelada: ${u.tanque_recarga})` : ''}`);
-      add('reabastecer', `Reabastecer o ${tc.nome} (${tc.custo_reabastecer} pts)`);
-    } else info('Tanque indisponível nesta rodada');
-    add('sair_tanque', 'Sair do tanque (grátis)');
+      info(`Tank out of fuel${u.tanque_municao ? ` (reload frozen: ${u.tanque_recarga})` : ''}`);
+      add('reabastecer', `Refuel the ${tc.nome} (${tc.custo_reabastecer} pts)`);
+    } else info('Tank unavailable this round');
+    add('sair_tanque', 'Leave the tank (free)');
   } else {
-    for (const [k, t, arma] of [['rifle', 'Rifle', 'rifle'], ['submetralhadora', 'Submetralhadora', 'smg']])
-      U.tem_municao(u, arma) ? add(k, `${t} (${U.usos_restantes(u, arma)}x, ${cu[k]} pts)`) : info(`${t} sem munição`);
+    for (const [k, t, arma] of [['rifle', 'Rifle', 'rifle'], ['submetralhadora', 'Submachine gun', 'smg']])
+      U.tem_municao(u, arma) ? add(k, `${t} (${U.usos_restantes(u, arma)}x, ${cu[k]} pts)`) : info(`${t} out of ammo`);
     const na = C.DADOS_LADOS[lado].arma_anti_tank_nome;
-    if (u.arma_no_chao) add('recolher_arma', `Recolher ${na} do chão (grátis)`);
-    else if (U.tem_municao(u, 'anti_tank')) add('anti_tank', `${na} (${U.usos_restantes(u, 'anti_tank')}x, ${cu.anti_tank} pts)`);
-    else info(`${na} sem munição`);
-    add('molotov', `Molotov (${cu.molotov} pts, fogo por ${C.MOLOTOV.rodadas} rodadas)`);
-    add('chamar_blindado', 'Chamar blindado');
+    if (U.tem_municao(u, 'anti_tank')) add('anti_tank', `${na} (${U.usos_restantes(u, 'anti_tank')}x, ${cu.anti_tank} pts)`);
+    else info(`${na} out of ammo`);
+    add('chamar_blindado', 'Call armor');
   }
-  if (!u.caminhao) add('chamar_caminhao', `Chamar caminhão ${C.DADOS_LADOS[lado].caminhao_nome} (chega em ${C.CAMINHAO.rodadas_para_chegar} rodadas)`);
-  else if (u.caminhao.estado === 'a_caminho') info(`Caminhão a caminho (chega em ${u.caminhao.chegada} rodada(s))`);
-  else add('caminhao_suprimento', `Suprimentos do caminhão (instantâneo · caminhão ${u.caminhao.vida}/${C.CAMINHAO.vida})`);
+  if (!u.caminhao) add('chamar_caminhao', `Call truck ${C.DADOS_LADOS[lado].caminhao_nome} (arrives in ${C.CAMINHAO.rodadas_para_chegar} rounds)`);
+  else if (u.caminhao.estado === 'a_caminho') info(`Truck on its way (arrives in ${u.caminhao.chegada} round(s))`);
+  else add('caminhao_suprimento', `Truck supplies (instant · truck ${u.caminhao.vida}/${C.CAMINHAO.vida})`);
   const ca = C.LINHA_SUPORTE.artilharia, na = LS.nome(u, 'artilharia');
-  if (!LS.tem(u, 'artilharia')) add('comprar_artilharia', `Comprar artilharia ${na} (${ca.custo_compra} pts)`);
-  else if (LS.pode_solicitar_artilharia(u)) add('solicitar_artilharia', `Solicitar artilharia ${na} (${ca.custo_uso} pts)`);
-  else info(`Artilharia ${na} em recarga`);
-  if (!LS.tem(u, 'antiaerea')) add('comprar_antiaerea', `Comprar antiaérea ${LS.nome(u, 'antiaerea')} (${C.LINHA_SUPORTE.antiaerea.custo_compra} pts)`);
+  if (!LS.tem(u, 'artilharia')) add('comprar_artilharia', `Buy artillery ${na} (${ca.custo_compra} pts)`);
+  else if (LS.pode_solicitar_artilharia(u)) add('solicitar_artilharia', `Request artillery ${na} (${ca.custo_uso} pts)`);
+  else info(`Artillery ${na} on cooldown`);
+  if (!LS.tem(u, 'antiaerea')) add('comprar_antiaerea', `Buy anti-aircraft ${LS.nome(u, 'antiaerea')} (${C.LINHA_SUPORTE.antiaerea.custo_compra} pts)`);
   if (C.SUPORTE_AEREO_ATIVO) {
     const av = C.DADOS_LADOS[lado].suporte_nome;
-    if (LS.aviao_disponivel(u)) add('suporte_aereo', `Suporte aéreo ${av} (${cu.suporte_aereo} pts)`);
-    else if (LS.aviao_a_caminho(u)) info(`${av} a caminho do alvo`); else info(`${av} em recarga`);
+    if (LS.aviao_disponivel(u)) add('suporte_aereo', `Air support ${av} (${cu.suporte_aereo} pts)`);
+    else if (LS.aviao_a_caminho(u)) info(`${av} on its way to the target`); else info(`${av} on cooldown`);
   }
-  u.tanque_ativo ? add('aguardar', 'Aguardar (grátis)') : add('cobertura', 'Buscar cobertura (grátis, fica exposto)');
-  if (!u.tanque_ativo) add('pular_vez', `Pular a vez (+${C.BONUS_PULAR_VEZ} pts)`);
-  add('fugir', 'Fugir');
+  u.tanque_ativo ? add('aguardar', 'Wait (free)') : add('cobertura', 'Take cover (free, leaves you exposed)');
+  if (!u.tanque_ativo) add('pular_vez', `Skip turn (+${C.BONUS_PULAR_VEZ} pts)`);
+  add('fugir', 'Flee');
   return o;
 };
 Tn.opcoes_suprimento = (u) => {
   const c = C.CUSTOS_ACAO, na = C.DADOS_LADOS[u.lado_id].arma_anti_tank_nome;
-  const r = [{ chave: 'suprimento_medico', texto: `Médico (+${C.CURA_SUPRIMENTO} HP, ${c.suprimento_medico} pts)` },
-    { chave: 'suprimento_municao_rifle', texto: `Munição de rifle (${c.suprimento_municao_rifle} pts)` },
-    { chave: 'suprimento_municao_smg', texto: `Munição de SMG (${c.suprimento_municao_smg} pts)` },
-    { chave: 'suprimento_municao_anti_tank', texto: `Munição de ${na} (${c.suprimento_municao_anti_tank} pts)` }];
-  if (u.tanque_ativo) { const tc = tcfg(u); r.push({ chave: 'reabastecer', texto: `Combustível do ${tc.nome} (${tc.custo_reabastecer} pts)` }); }
+  const r = [{ chave: 'suprimento_medico', texto: `Medical (+${C.CURA_SUPRIMENTO} HP, ${c.suprimento_medico} pts)` },
+    { chave: 'suprimento_municao_rifle', texto: `Rifle ammo (${c.suprimento_municao_rifle} pts)` },
+    { chave: 'suprimento_municao_smg', texto: `SMG ammo (${c.suprimento_municao_smg} pts)` },
+    { chave: 'suprimento_municao_anti_tank', texto: `${na} ammo (${c.suprimento_municao_anti_tank} pts)` }];
+  if (u.tanque_ativo) { const tc = tcfg(u); r.push({ chave: 'reabastecer', texto: `Fuel for the ${tc.nome} (${tc.custo_reabastecer} pts)` }); }
   return r;
 };
-Tn.opcoes_artilharia = (u, op) => [{ chave: 'solicitar_artilharia', texto: `Atacar a linha de frente (${C.LINHA_SUPORTE.artilharia.custo_uso} pts)` },
-  { chave: 'interceptar_caminhao', texto: `Interceptar o ${C.DADOS_LADOS[op.lado_id].caminhao_nome} (${C.LINHA_SUPORTE.artilharia.custo_uso} pts)` }];
+Tn.opcoes_artilharia = (u, op) => [{ chave: 'solicitar_artilharia', texto: `Attack the front line (${C.LINHA_SUPORTE.artilharia.custo_uso} pts)` },
+  { chave: 'interceptar_caminhao', texto: `Intercept the ${C.DADOS_LADOS[op.lado_id].caminhao_nome} (${C.LINHA_SUPORTE.artilharia.custo_uso} pts)` }];
 Tn.opcoes_blindado = (lado) => ['leve', 'medio', 'pesado'].map(k => { const t = C.TANQUES[lado][k];
-  return { chave: `chamar_blindado_${k}`, classe: k, texto: `${t.nome} — vida ${t.vida}, custo ${t.custo_chamar}, canhão 0–${t.dano_max}, recarga ${t.recarga_rodadas}, combustível ${t.combustivel_rodadas}` }; });
+  return { chave: `chamar_blindado_${k}`, classe: k, texto: `${t.nome} — HP ${t.vida}, cost ${t.custo_chamar}, cannon ${Math.ceil(t.dano_max * C.TANQUE_DANO_MIN_FRACAO)}–${t.dano_max}, reload ${t.recarga_rodadas}, fuel ${t.combustivel_rodadas}` }; });
 Tn.opcoes_aereo = (u, op) => {
-  const r = [{ chave: 'ataque_aereo_frente', texto: `Atacar a linha de frente (chega em ${LS.rodadas_chegada(u, 'frente')} rodadas)` }];
-  for (const [t, rot] of [['antiaerea', 'antiaérea'], ['artilharia', 'artilharia']])
-    if (LS.tem(op, t)) r.push({ chave: `ataque_aereo_${t}`, texto: `Atacar a linha de suporte: ${rot} (chega em ${LS.rodadas_chegada(u, t)} rodadas)` });
+  const r = [{ chave: 'ataque_aereo_frente', texto: `Attack the front line (arrives in ${LS.rodadas_chegada(u, 'frente')} rounds)` }];
+  for (const [t, rot] of [['antiaerea', 'anti-aircraft'], ['artilharia', 'artillery']])
+    if (LS.tem(op, t)) r.push({ chave: `ataque_aereo_${t}`, texto: `Attack the support line: ${rot} (arrives in ${LS.rodadas_chegada(u, t)} rounds)` });
   return r;
 };
 
 Tn.validar_acao = (chave, u, op) => {
   if (chave.startsWith('chamar_blindado_')) {
     const custo = C.TANQUES[u.lado_id][chave.split('_').pop()].custo_chamar;
-    return u.pontos < custo ? 'Pontos insuficientes para chamar este blindado!' : null;
+    return u.pontos < custo ? 'Not enough points to call this armored vehicle!' : null;
   }
-  if (SUPR_CAMINHAO.has(chave) && !CM.ativo(u)) return 'Sem caminhão ativo para fornecer suprimentos!';
-  if (chave === 'chamar_caminhao' && u.caminhao) return 'Você já tem um caminhão a caminho ou ativo!';
-  if (chave === 'interceptar_caminhao' && (!LS.pode_solicitar_artilharia(u) || !CM.a_caminho(op))) return 'Interceptação indisponível!';
+  if (SUPR_CAMINHAO.has(chave) && !CM.ativo(u)) return 'No active truck to provide supplies!';
+  if (chave === 'chamar_caminhao' && u.caminhao) return 'You already have a truck on its way or active!';
+  if (chave === 'interceptar_caminhao' && (!LS.pode_solicitar_artilharia(u) || !CM.a_caminho(op))) return 'Interception unavailable!';
   if (chave === 'reabastecer') {
-    if (!u.tanque_ativo) return 'Sem blindado ativo!';
+    if (!u.tanque_ativo) return 'No active armored vehicle!';
     const custo = tcfg(u).custo_reabastecer;
-    return u.pontos < custo ? `Pontos insuficientes para reabastecer! (custo ${custo})` : null;
+    return u.pontos < custo ? `Not enough points to refuel! (cost ${custo})` : null;
   }
-  if ((chave === 'comprar_artilharia' || chave === 'comprar_antiaerea') && LS.tem(u, chave.slice(8))) return `${u.nome} já comprou essa unidade de suporte!`;
-  if (chave === 'solicitar_artilharia' && !LS.pode_solicitar_artilharia(u)) return 'Artilharia indisponível (não comprada ou em recarga)!';
+  if ((chave === 'comprar_artilharia' || chave === 'comprar_antiaerea') && LS.tem(u, chave.slice(8))) return `${u.nome} already bought this support unit!`;
+  if (chave === 'solicitar_artilharia' && !LS.pode_solicitar_artilharia(u)) return 'Artillery unavailable (not bought or on cooldown)!';
   if (chave.startsWith('ataque_aereo_')) {
     const alvo = chave.slice(13);
-    if (!LS.aviao_disponivel(u) || (alvo !== 'frente' && !LS.tem(op, alvo))) return 'Ataque aéreo indisponível!';
+    if (!LS.aviao_disponivel(u) || (alvo !== 'frente' && !LS.tem(op, alvo))) return 'Air strike unavailable!';
   }
-  if (chave === 'carregar_perfurante' || chave === 'carregar_explosivo') return T.pode_carregar(u) ? null : 'O canhão não pode ser carregado agora!';
-  if (chave === 'tanque_metralhadora' && !T.tanque_operacional(u)) return 'A metralhadora do tanque está indisponível!';
+  if (chave === 'carregar_perfurante' || chave === 'carregar_explosivo') return T.pode_carregar(u) ? null : 'The cannon cannot be loaded right now!';
+  if (chave === 'tanque_metralhadora' && !T.tanque_operacional(u)) return 'The tank machine gun is unavailable!';
   if (chave === 'tanque_perfurante' || chave === 'tanque_explosivo') {
-    if (!T.canhao_pronto(u) || u.tanque_municao !== chave.slice(7)) return 'O canhão não está pronto com esse tipo de munição!';
+    if (!T.canhao_pronto(u) || u.tanque_municao !== chave.slice(7)) return 'The cannon is not ready with that ammo type!';
   }
-  if (chave === 'recolher_arma' && !u.arma_no_chao) return 'Não há arma no chão!';
-  if (chave === 'anti_tank' && u.arma_no_chao) return `${u.nome} está sem a arma antitanque (ela está no chão)!`;
-  for (const [a, arma, t] of [['rifle', 'rifle', 'de rifle'], ['submetralhadora', 'smg', 'de submetralhadora'], ['anti_tank', 'anti_tank', 'da arma antitanque']])
-    if (chave === a && !U.tem_municao(u, arma)) return `${u.nome} está sem munição ${t}!`;
-  if (chave in C.CUSTOS_ACAO && !U.pode_pagar(u, chave)) return `${u.nome} não tem pontos suficientes para essa ação!`;
+  for (const [a, arma, t] of [['rifle', 'rifle', 'rifle'], ['submetralhadora', 'smg', 'submachine gun'], ['anti_tank', 'anti_tank', 'anti-tank weapon']])
+    if (chave === a && !U.tem_municao(u, arma)) return `${u.nome} is out of ${t} ammo!`;
+  if (chave in C.CUSTOS_ACAO && !U.pode_pagar(u, chave)) return `${u.nome} does not have enough points for this action!`;
   return null;
 };
 Tn.executar_acao = async (chave, u, op) => {
   const erro = Tn.validar_acao(chave, u, op);
   if (erro) { say(erro); await espera(1.2); return; }
   u.hist.push(chave); if (u.hist.length > 10) u.hist.shift();
-  if (chave === 'pular_vez') { u.pontos += C.BONUS_PULAR_VEZ; say(`${u.nome} reagrupa (+${C.BONUS_PULAR_VEZ} pts).`); await espera(1.3); }
-  else if (chave === 'fugir') { u.fugiu = true; say(`${u.nome} recua e abandona o campo de batalha!`); await espera(1.5); }
+  if (chave === 'pular_vez') { u.pontos += C.BONUS_PULAR_VEZ; say(`${u.nome} regroups (+${C.BONUS_PULAR_VEZ} pts).`); await espera(1.3); }
+  else if (chave === 'fugir') { u.fugiu = true; say(`${u.nome} retreats and abandons the battlefield!`); await espera(1.5); }
   else if (chave === 'sair_tanque') await T.sair_do_tanque(u);
   else if (chave.startsWith('chamar_blindado_')) await T.chamar_tanque(u, chave.split('_').pop());
-  else if (chave === 'aguardar') { say(`${u.nome} aguarda.`); await espera(1); }
-  else if (chave === 'cobertura') { if (!u.tanque_ativo) { U.ativar_cobertura(u); say(`${u.nome} corre para a cobertura, exposto por um instante.`); await fx('cobertura_corre', { u }); await espera(1); } }
-  else if (chave === 'recolher_arma') { u.arma_no_chao = false; say(`${u.nome} recolhe o ${C.DADOS_LADOS[u.lado_id].arma_anti_tank_nome} do chão.`); await espera(1.2); }
+  else if (chave === 'aguardar') { say(`${u.nome} waits.`); await espera(1); }
+  else if (chave === 'cobertura') { if (!u.tanque_ativo) { U.ativar_cobertura(u); say(`${u.nome} runs for cover, exposed for a moment.`); await fx('cobertura_corre', { u }); await espera(1); } }
   else {
     U.pagar(u, chave);
     if (chave in ACOES_ATAQUE) await ACOES_ATAQUE[chave](u, op);
@@ -526,8 +553,8 @@ const PERSONAS = {
 const SORTEAVEIS = ['agressivo', 'defensivo', 'economico', 'blindado', 'aereo'];
 const sorteia = (a) => a[Math.floor(Math.random() * a.length)];
 const CAT = (k) => {
-  if (['rifle', 'submetralhadora', 'molotov', 'tanque_metralhadora', 'tanque_perfurante', 'tanque_explosivo'].includes(k) || k.startsWith('carregar_')) return 'ataque';
-  if (k === 'anti_tank' || k === 'recolher_arma' || k === 'suprimento_municao_anti_tank') return 'antitanque';
+  if (['rifle', 'submetralhadora', 'tanque_metralhadora', 'tanque_perfurante', 'tanque_explosivo'].includes(k) || k.startsWith('carregar_')) return 'ataque';
+  if (k === 'anti_tank' || k === 'suprimento_municao_anti_tank') return 'antitanque';
   if (k.startsWith('chamar_blindado_')) return 'blindado';
   if (k.startsWith('ataque_aereo_')) return 'aereo';
   if (k === 'solicitar_artilharia' || k === 'interceptar_caminhao') return 'artilharia';
@@ -541,14 +568,13 @@ const custoDe = (k, u) => k.startsWith('chamar_blindado_') ? C.TANQUES[u.lado_id
 
 const dmgEsp = (k, u, op) => {
   const tk = op.tanque_ativo, arm = tk ? C.FATOR_DANO_ARMA_NORMAL_VS_TANQUE : 1, cob = op.em_cobertura ? .45 : 1, buff = 1 - C.DADOS_LADOS[op.lado_id].buff_defesa * .5, l = u.lado_id;
-  if (k === 'rifle') return (l === 1 ? 10.5 : 9) * arm * cob * buff;
-  if (k === 'submetralhadora') return (l === 1 ? 16 : 12) * arm * cob * buff;
-  if (k === 'anti_tank') return (tk ? 19 : 7.5) * cob * buff;
-  if (k === 'molotov') { const n = C.MOLOTOV.rodadas - op.molotov_restante; return n <= 0 ? 0 : 5.5 * arm * (cob + n - 1) * buff; }
+  if (k === 'rifle') return 7.3 * arm * cob * buff;
+  if (k === 'submetralhadora') return 11 * arm * cob * buff;
+  if (k === 'anti_tank') return (tk ? 16.5 : 5.5) * cob * buff;
   if (k === 'solicitar_artilharia') { const c = C.LINHA_SUPORTE.artilharia, f = c.dano_tiro[l]; return c.tiros * (f[0] + f[1]) / 2 * arm * cob * buff; }
   if (k === 'ataque_aereo_frente') { const p = LS.tem(op, 'antiaerea') ? C.LINHA_SUPORTE.antiaerea.chance_interceptacao[op.lado_id] / 100 : 0; return 30 * Math.pow(1 - p, LS.rodadas_chegada(u, 'frente')) * cob * buff; }
-  if (k === 'tanque_metralhadora') return 5 * arm * cob * buff;
-  if (k === 'tanque_perfurante' || k === 'tanque_explosivo') { const certa = (k === 'tanque_perfurante') === tk; return tcfg(u).dano_max / 2 * (certa ? 1 : C.TANQUE_FATOR_MUNICAO_ERRADA) * cob * buff; }
+  if (k === 'tanque_metralhadora') return 5.8 * arm * cob * buff;
+  if (k === 'tanque_perfurante' || k === 'tanque_explosivo') { const certa = (k === 'tanque_perfurante') === tk; return tcfg(u).dano_max * (1 - C.TANQUE_CHANCE_ERRO_TOTAL) * (1 + C.TANQUE_DANO_MIN_FRACAO) / 2 * (certa ? 1 : C.TANQUE_FATOR_MUNICAO_ERRADA) * cob * buff; }
   return 0;
 };
 
@@ -579,8 +605,6 @@ const pontuar = (k, c) => {
   let s;
   if (k === 'rifle' || k === 'submetralhadora' || k === 'tanque_metralhadora' || k === 'solicitar_artilharia') s = atq();
   else if (k === 'anti_tank') s = atq(tk ? 8 : 0);
-  else if (k === 'molotov') s = atq() - (U.tem_municao(u, 'anti_tank') && !u.arma_no_chao ? 8 : 0) - (tk ? 20 : 0);
-  else if (k === 'recolher_arma') s = !U.tem_municao(u, 'anti_tank') ? 3 : tk ? 36 : c.opTankProx ? 22 : 9;
   else if (k.startsWith('chamar_blindado_')) s = (tk ? 34 : 22) + { leve: 0, medio: 6, pesado: 11 }[k.split('_').pop()] + (hpP < .4 ? 10 : 0) + (turno >= 3 ? 3 : -4);
   else if (k === 'tanque_perfurante' || k === 'tanque_explosivo') s = atq(tk && k === 'tanque_perfurante' ? 8 : 0);
   else if (k.startsWith('carregar_')) { const tc = tcfg(u); s = (k.slice(9) === (tk ? 'perfurante' : 'explosivo') ? 36 : 6) - tc.recarga_rodadas * 2 - (u.tanque_combustivel <= tc.recarga_rodadas ? 14 : 0); }
@@ -605,9 +629,7 @@ const pontuar = (k, c) => {
     if (!tk && dmg >= c.opHp * .85) s += atras ? 27 : 45;
     else if (tk && dmg >= c.opHp * .9) s += atras ? 8 : 14;
   }
-  if (c.mem.cob >= .34 && k === 'molotov') s += 12;
   if (c.mem.pass >= .5 && (CAT(k) === 'ataque' || CAT(k) === 'aereo')) s += 6;
-  if (c.mem.tank >= .3 && !tk && k === 'recolher_arma') s += 8;
   if (c.opAereoProx && hpP < .35 && k.startsWith('chamar_blindado_')) s += 10;
   const cb = d.combos && ia.combo && ia.combo.ate >= turno ? ia.combo.tipo : null;
   if (cb === 'amaciar' && (k === 'ataque_aereo_frente' || k === 'submetralhadora' || k === 'tanque_explosivo')) s += 20;
@@ -629,7 +651,6 @@ const pontuarSup = (k, c) => {
   if (k === 'suprimento_municao_rifle') return (!U.tem_municao(u, 'rifle') ? 30 : U.usos_restantes(u, 'rifle') <= 1 ? 10 : 0) * f - .4 * custo;
   if (k === 'suprimento_municao_smg') return (!U.tem_municao(u, 'smg') ? 26 : U.usos_restantes(u, 'smg') <= 1 ? 6 : 0) * f - .4 * custo;
   if (k === 'suprimento_municao_anti_tank') {
-    if (u.arma_no_chao) return -99;
     return (!U.tem_municao(u, 'anti_tank') ? (c.tk || c.opTankProx || c.mem.tank >= .3 ? 42 : 8) : 0) - .4 * custo;
   }
   return -99;
@@ -643,7 +664,7 @@ const candidatos = (u, op, fase) => {
   } else {
     if (u.tanque_ativo) ks.push('tanque_metralhadora', 'tanque_perfurante', 'tanque_explosivo', 'carregar_perfurante', 'carregar_explosivo', 'reabastecer', 'sair_tanque', 'aguardar');
     else {
-      ks.push('rifle', 'submetralhadora', 'anti_tank', 'molotov', 'recolher_arma', 'chamar_blindado_leve', 'chamar_blindado_medio', 'chamar_blindado_pesado', 'pular_vez');
+      ks.push('rifle', 'submetralhadora', 'anti_tank', 'chamar_blindado_leve', 'chamar_blindado_medio', 'chamar_blindado_pesado', 'pular_vez');
       if (!u.em_cobertura && !u.cobertura_pendente) ks.push('cobertura');
     }
     ks.push('chamar_caminhao', 'comprar_artilharia', 'comprar_antiaerea', 'solicitar_artilharia', 'interceptar_caminhao');
@@ -689,7 +710,7 @@ Tn.turno_bot = async (u, op, turno) => {
   say(`\n▶ ${u.nome}`); await espera(0.5);
   if (CM.ativo(u)) for (let k = 0; k < 3; k++) { const s = B.escolher(u, op, turno, 'sup', d, ia); if (!s) break; await Tn.executar_acao(s, u, op); }
   const acao = B.escolher(u, op, turno, 'main', d, ia);
-  if (d.combos) ia.combo = acao === 'solicitar_artilharia' ? { tipo: 'amaciar', ate: turno + 1 } : acao === 'molotov' ? { tipo: 'fogo', ate: turno + 1 } : (ia.combo && ia.combo.ate >= turno + 1 ? ia.combo : null);
+  if (d.combos) ia.combo = acao === 'solicitar_artilharia' ? { tipo: 'amaciar', ate: turno + 1 } : (ia.combo && ia.combo.ate >= turno + 1 ? ia.combo : null);
   await Tn.executar_acao(acao, u, op);
 };
 
@@ -703,16 +724,18 @@ L.resolver_cobertura = async (at, alvo, ehHumano) => {
   if (acao) {
     if (ehHumano) {
       L.pausar_registro();
-      say(`\n>>> ${alvo.nome} corre para a cobertura! Aperte ENTER em ${C.QTE_TEMPO_SEGUNDOS}s para atacar!`);
-      reagiu = await HOOK.qte(C.QTE_TEMPO_SEGUNDOS, at, alvo);
+      say(`\n>>> ${alvo.nome} runs for cover! Aim fast!`);
+      const pr = await HOOK.mira({ arma: acao, at, def: alvo, prep: false, reacao: true });
       L.retomar_registro();
+      if (pr > 0) { reagiu = true; L._prec_forcada = pr; }
     } else reagiu = rand100() <= DIF().qte;
   }
-  if (reagiu) { say(`${at.nome} flagra ${alvo.nome} em campo aberto!`); await Tn.executar_acao(acao, at, alvo); }
-  else { alvo.em_cobertura = true; say(`${alvo.nome} alcança a cobertura a tempo.`); await fx('cobertura_chega', { u: alvo }); await espera(1); }
+  if (reagiu) { say(`${at.nome} catches ${alvo.nome} in the open!`); await Tn.executar_acao(acao, at, alvo); L._prec_forcada = null; }
+  else { alvo.em_cobertura = true; say(`${alvo.nome} reaches cover in time.`); await fx('cobertura_chega', { u: alvo }); await espera(1); }
 };
 
 L.rodar_batalha = async (jogador, inimigo) => {
+  L.jogador_humano = jogador;
   let turno = 1;
   inimigo.ajuste_pontos = DIF().pontos_rodada;
   const alemao = jogador.lado_id === 1 ? jogador : inimigo, sovietico = jogador.lado_id === 1 ? inimigo : jogador;
@@ -722,7 +745,7 @@ L.rodar_batalha = async (jogador, inimigo) => {
       U.ganhar_pontos_turno(jogador); U.ganhar_pontos_turno(inimigo);
     }
     HOOK.status(jogador, inimigo, turno);
-    say(`\n=== Turno ${turno} ===`); await espera(0.5);
+    say(`\n=== Turn ${turno} ===`); await espera(0.5);
     L.iniciar_registro();
     for (const [u, op] of [[alemao, sovietico], [sovietico, alemao]]) {
       await T.processa_chegada_e_cooldown_tanque(u);
@@ -736,7 +759,7 @@ L.rodar_batalha = async (jogador, inimigo) => {
       if (u.fugiu || op.fugiu) break;
       if (U.unidade_derrotada(op)) break;
     }
-    for (const u of [alemao, sovietico]) { await L.aplica_efeito_incendiario(u); await L.aplica_molotov(u); }
+    for (const u of [alemao, sovietico]) { await L.aplica_efeito_incendiario(u); }
     const fuga = jogador.fugiu || inimigo.fugiu;
     if (fuga || U.unidade_derrotada(jogador) || U.unidade_derrotada(inimigo)) { HOOK.status(jogador, inimigo, turno); return fuga ? 'fuga' : 'combate'; }
     turno += 1;
@@ -744,6 +767,44 @@ L.rodar_batalha = async (jogador, inimigo) => {
 };
 L.vencedor = (jogador, inimigo, motivo) =>
   motivo === 'fuga' ? (jogador.fugiu ? inimigo : jogador) : (U.unidade_derrotada(jogador) ? inimigo : jogador);
+
+// ============================================================================
+// VOLUMES (menu Opções). Só roda no navegador.
+// Todo `new Audio(...)` do jogo passa por aqui: o volume final é
+//   volume pedido pelo código x volume da categoria x volume geral.
+// Categorias pelo caminho do arquivo: dublagem (assets/dublagem/), musica (menu.mp3 e 1..N.mp3
+// em assets/audio/), ambiente (ambiente.mp3 + efeitos da intro em assets/audio/), combate (resto de assets/sons/).
+// ============================================================================
+L.VOLUMES_ROTULOS = [['geral', 'Master'], ['musica', 'Music'], ['combate', 'Gunfire and combat'], ['dublagem', 'Voice acting'], ['ambiente', 'Ambience and intro']];
+L.VOLUMES = { geral: 1, musica: 1, combate: 1, dublagem: 1, ambiente: 1 };
+if (typeof window !== 'undefined' && window.Audio) {
+  try { Object.assign(L.VOLUMES, JSON.parse(localStorage.getItem('luftballons_volumes') || '{}')); } catch (e) {}
+  const Nativo = window.Audio, vd = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'volume');
+  const vivos = [];
+  const categoria = (src) => {
+    src = decodeURI(String(src || '')).toLowerCase();
+    if (src.includes('/dublagem/')) return 'dublagem';
+    if (/assets\/audio\/(menu|\d+)\.mp3/.test(src)) return 'musica';
+    if (src.includes('ambiente.mp3') || src.includes('/audio/')) return 'ambiente';
+    if (src.includes('/sons/')) return 'combate';
+    return null;
+  };
+  const aplicar = (a) => { const c = categoria(a.getAttribute('src') || a.src); vd.set.call(a, Math.max(0, Math.min(1, (a._v ?? 1) * L.VOLUMES.geral * (c ? L.VOLUMES[c] : 1)))); };
+  window.Audio = function (src) {
+    const a = src === undefined ? new Nativo() : new Nativo(src);
+    Object.defineProperty(a, 'volume', { get() { return a._v ?? 1; }, set(v) { a._v = v; aplicar(a); }, configurable: true });
+    a.addEventListener('play', () => aplicar(a)); aplicar(a); vivos.push(new WeakRef(a));
+    return a;
+  };
+  window.Audio.prototype = Nativo.prototype;
+  L.definir_volume = (k, v) => {
+    if (!(k in L.VOLUMES)) return;
+    L.VOLUMES[k] = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem('luftballons_volumes', JSON.stringify(L.VOLUMES)); } catch (e) {}
+    for (let i = vivos.length - 1; i >= 0; i--) { const a = vivos[i].deref(); if (!a) vivos.splice(i, 1); else aplicar(a); }
+    if (L.aoMudarVolume) L.aoMudarVolume();
+  };
+}
 
 root.Luft = L;
 if (typeof module !== 'undefined') module.exports = L;
